@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medeport | Planificación & Cronograma de Embarques</title>
+<!-- Firebase SDK (compat, vía CDN)) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- SheetJS: motor de lectura/escritura de archivos Excel (.xlsx) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1B2A4A;
+    --navy-2:#243660;
+    --ink:#1c2333;
+    --paper:#f3f5f9;
+    --card:#ffffff;
+    --line:#e1e5ee;
+    --muted:#68708a;
+    --accent:#C55A11;
+    --accent-2:#5B9BD5;
+    --ok:#385623;
+    --danger:#C00000;
+    --warning:#b78103;
+    --warning-bg:#fff9e6;
+    --warning-border:#ffe58f;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(20,25,45,.06), 0 6px 20px rgba(20,25,45,.05);
+    font-family:"Segoe UI","Inter",system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);}
+  body{font-size:14px;line-height:1.4;}
+  h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:.2px;}
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    background:linear-gradient(180deg,var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff;padding:16px 24px 0 24px;
+    box-shadow:0 4px 16px rgba(10,15,35,.25);
+    position:sticky;top:0;z-index:50;
+  }
+  .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:34px;height:34px;border-radius:8px;background:#fff;color:var(--navy);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;
+  }
+  .brand .title{font-size:17px;font-weight:800;}
+  .brand .sub{font-size:11px;color:#c7d1ea;font-weight:500;letter-spacing:.4px;text-transform:uppercase;}
+  .toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .btn{
+    border:1px solid transparent;background:#fff;color:var(--navy);
+    padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:transform .08s ease, box-shadow .15s ease;
+  }
+  .btn:hover{box-shadow:0 4px 10px rgba(0,0,0,.15);transform:translateY(-1px);}
+  .btn.ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25);}
+  .btn.ghost:hover{background:rgba(255,255,255,.16);}
+  .btn.danger{background:var(--danger);color:#fff;}
+  .btn.small{padding:5px 10px;font-size:11.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .sync-indicator{
+    display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#fff;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+    padding:6px 12px;border-radius:20px;
+  }
+  .sync-dot{width:9px;height:9px;border-radius:50%;background:#9aa3ba;box-shadow:0 0 0 3px rgba(255,255,255,.08);}
+  .sync-dot.online{background:#4CD964;box-shadow:0 0 0 3px rgba(76,217,100,.25);}
+  .sync-dot.offline{background:#E5484D;box-shadow:0 0 0 3px rgba(229,72,77,.25);}
+  .sync-dot.local{background:#f5c542;box-shadow:0 0 0 3px rgba(245,197,66,.25);}
+  .tabs{display:flex;gap:2px;margin-top:14px;}
+  .tab{
+    padding:10px 18px;font-size:13px;font-weight:700;color:#c7d1ea;background:transparent;
+    border:none;border-bottom:3px solid transparent;cursor:pointer;border-radius:8px 8px 0 0;
+  }
+  .tab:hover{color:#fff;background:rgba(255,255,255,.06);}
+  .tab.active{color:#fff;background:var(--paper);color:var(--navy);border-bottom:3px solid var(--accent);}
+  /* ---------- LAYOUT ---------- */
+  .view{display:none;padding:22px 24px 60px 24px;max-width:1600px;margin:0 auto;}
+  .view.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+  .card h2{font-size:15px;color:var(--navy);}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .muted{color:var(--muted);}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+  .empty{
+    text-align:center;padding:40px 20px;color:var(--muted);border:2px dashed var(--line);border-radius:var(--radius);
+    background:repeating-linear-gradient(135deg, rgba(27,42,74,.02) 0 10px, transparent 10px 20px);
+  }
+  /* ---------- FORM ---------- */
+  .form-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:end;}
+  .field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+  input,select,textarea{
+    border:1px solid var(--line);border-radius:7px;padding:8px 9px;font-size:13px;
+    font-family:inherit;background:#fbfcfe;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #9fb4ff88;border-color:#7f96e0;}
+  table{width:100%;border-collapse:collapse;font-size:12.8px;}
+  thead th{
+    text-align:left;padding:9px 10px;background:#f6f8fc;color:var(--navy);
+    border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;
+  }
+  tbody td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:hover{background:#f9fafd;}
+  .badge-marca-ADIDAS{background:#ffe1e1;color:#9d0000;}
+  .badge-marca-REEBOK{background:#dbe9fb;color:#0d4a8c;}
+  .badge-marca-ADI_RBK{background:linear-gradient(90deg,#ffe1e1 50%,#dbe9fb 50%);color:#3a2a2a;}
+  .badge-tipo-CONSUMO{background:#dff0ff;color:#0b5aa8;}
+  .badge-tipo-DEPCO{background:#e4e7ef;color:#3a4360;}
+  .badge-tipo-CONSOLIDADO_OTN{background:#fde9d9;color:#8a4a12;}
+  
+  /* ESTILOS DE COLOR DE ESTADO EN MICROPROCESOS */
+  select.inline-status{
+    font-weight:700;
+    border-radius:6px;
+    padding:4px 8px;
+    transition:background-color .2s, color .2s;
+  }
+  select.inline-status.status-completo{
+    background-color:#d4edda !important;
+    color:#155724 !important;
+    border:1px solid #c3e6cb !important;
+  }
+  select.inline-status.status-pendiente{
+    background-color:#fbe3e4 !important;
+    color:#a81c1c !important;
+    border:1px solid #f5c6cb !important;
+  }
+  select.inline-status.status-na{
+    background-color:#fff3cd !important;
+    color:#856404 !important;
+    border:1px solid #ffeeba !important;
+  }
+
+  /* ALERTAS BANNER */
+  .alerts-container{margin-bottom:16px;}
+  .alert-banner{
+    background:var(--warning-bg);border:1px solid var(--warning-border);color:#8a5a00;
+    border-radius:8px;padding:12px 16px;font-size:13px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;
+  }
+  .alert-banner.danger{background:#fff0f0;border-color:#ffccc7;color:var(--danger);}
+  .alert-banner .alert-icon{font-size:18px;line-height:1;}
+  .alert-banner .alert-content{flex:1;}
+  .alert-banner ul{margin:4px 0 0 18px;padding:0;font-size:12px;}
+  .alert-banner li{margin-bottom:3px;}
+
+  /* ---------- SHIPMENT / GANTT BLOCK ---------- */
+  .shipment-block{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:22px;overflow:hidden;background:#fff;}
+  .shipment-header{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;
+    background:#fffbe6;border-bottom:2px solid #f0e2a3;
+  }
+  .tag-name{background:#FFD966;color:#5c4600;font-weight:800;padding:4px 12px;border-radius:6px;font-size:13px;}
+  .tag-tipo-CONSUMO{background:#5B9BD5;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-tipo-DEPCO{background:#8EA9DB;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-tipo-CONSOLIDADO_OTN{background:#C55A11;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-consol{background:#eee;color:#555;font-weight:600;padding:4px 10px;border-radius:6px;font-size:11.5px;}
+  .tag-marca{font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:6px;}
+  .tag-marca.ADIDAS{background:#C00000;color:#fff;}
+  .tag-marca.REEBOK{background:#0d4a8c;color:#fff;}
+  .tag-marca.ADI_RBK{background:linear-gradient(90deg,#C00000 50%,#0d4a8c 50%);color:#fff;}
+  .gantt-scroll{overflow-x:auto;padding:14px;}
+  .gantt-grid{display:grid;grid-auto-rows:min-content;row-gap:2px;position:relative;}
+  .day-head{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:4px 0;font-size:10.5px;font-weight:700;border-left:1px solid #eef0f5;color:var(--muted);
+  }
+  .day-head .dow{font-size:9.5px;text-transform:uppercase;color:#98a0b6;}
+  .day-head .num{font-size:12px;color:var(--ink);}
+  .day-head.weekend{background:#eef0f6;}
+  .day-head.holiday{background:#fde3e3;}
+  .day-head.holiday .num{color:var(--danger);}
+  .day-head.holiday::after{content:"";display:block;width:70%;height:3px;background:var(--danger);border-radius:2px;margin-top:2px;}
+  .row-track{position:relative;min-height:28px;border-left:1px solid #eef0f5;transition:background .15s;}
+  .row-track.weekend-col{background:#f7f8fb;}
+  .row-track.drag-over{background:rgba(91,155,213,.25) !important;box-shadow:inset 0 0 0 2px var(--accent-2);}
+  .act-bar{
+    grid-row:1;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-size:10.3px;font-weight:700;color:#fff;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+    cursor:grab;user-select:none;transition:transform .1s, opacity .15s;z-index:2;
+  }
+  .act-bar:active{cursor:grabbing;transform:scale(0.98);opacity:.85;}
+  .act-bar.dragging{opacity:.4;outline:2px dashed #000;}
+  .act-bar.dark-text{color:#242424;}
+  .act-bar.bordered{box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 0 0 3px #00000055; outline:2px dashed #7a5b00; outline-offset:1px;}
+  .act-bar.is-custom::after{content:" •";font-size:14px;color:rgba(255,255,255,0.9);margin-left:3px;}
+  .act-bar.dark-text.is-custom::after{color:#242424;}
+  
+  .act-bar.has-alert{
+    animation: alertPulse 2s infinite;
+    outline: 2px solid var(--danger) !important;
+    outline-offset: 1px;
+  }
+  @keyframes alertPulse {
+    0% { box-shadow: 0 0 0 0 rgba(192, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(192, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(192, 0, 0, 0); }
+  }
+  .row-label-col{
+    position:sticky;left:0;background:#fff;padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);
+    border-right:2px solid var(--line);display:flex;align-items:center;
+  }
+  .zone-caption{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 2px 2px;}
+  .legend-table{margin-top:10px;}
+  .legend-table .sw{width:16px;height:16px;border-radius:4px;display:inline-block;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);}
+
+  .month-picker{display:flex;align-items:center;gap:8px;}
+  footer.hint{max-width:1600px;margin:0 auto;padding:0 24px 30px 24px;color:var(--muted);font-size:11.5px;}
+  @media (max-width:900px){
+    .form-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media print{
+    .topbar, .no-print{display:none !important;}
+    .view{display:block !important;padding:0;}
+    body{background:#fff;}
+    .shipment-block{break-inside:avoid;}
+  }
+  .micro-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0;}
+  .micro-filters .field{min-width:170px;}
+  .micro-counter{
+    background:#f6f8fc;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--navy);
+    display:flex;gap:16px;align-items:center;font-weight:700;
+  }
+  .brand-col-head{background:#f6f8fc;}
+  .brand-col-head.ADIDAS{color:#9d0000;}
+  .brand-col-head.REEBOK{color:#0d4a8c;}
+  .micro-table-wrap{overflow-x:auto;}
+  .micro-table{min-width:1400px;}
+  .micro-table td{font-size:12px;max-width:220px;}
+  .micro-table td.wrap{white-space:normal;}
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(15,20,35,.55);z-index:200;
+    display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:88vh;overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);padding:22px;
+  }
+  .modal-box h3{color:var(--navy);font-size:16px;margin-bottom:14px;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-grid .field.full{grid-column:1/-1;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .month-tabs{display:flex;gap:4px;flex-wrap:wrap;}
+  .month-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#f6f8fc;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;}
+  .month-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .filter-bar{display:flex;flex-direction:column;gap:6px;margin:8px 0 14px;}
+  .filter-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+  .filter-label{font-size:11px;font-weight:700;color:var(--muted);min-width:38px;margin-right:4px;text-transform:uppercase;}
+  @media print{.filter-bar{display:none;}}
+  .dropzone{
+    border:2px dashed #b9c3dd;border-radius:10px;background:#f8faff;padding:22px;text-align:center;
+    color:var(--muted);font-size:13px;cursor:pointer;transition:background .15s,border-color .15s;flex:1;min-width:260px;
+  }
+  .dropzone.dragover{background:#eaf1ff;border-color:var(--navy);color:var(--navy);}
+  .dropzone b{color:var(--navy);}
+  .resumen-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .resumen-remove-row{display:flex;gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap;}
+  .import-log{font-size:11.5px;color:var(--muted);margin-top:8px;max-height:90px;overflow-y:auto;background:#f6f8fc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .import-log div{margin-bottom:2px;}
+  .import-log .err{color:var(--danger);}
+  .import-log .ok{color:#2f6b1f;}
+  .resumen-table-wrap{overflow:auto;max-height:75vh;border:1px solid #d9dfea;border-radius:8px;box-shadow:var(--shadow);background:#fff;}
+  table.resumen-table{border-collapse:separate;border-spacing:0;min-width:2700px;font-size:11.5px;color:#1c2333;}
+  table.resumen-table th, table.resumen-table td{border-right:1px solid #d0d7de;border-bottom:1px solid #d0d7de;padding:6px 8px;white-space:nowrap;vertical-align:middle;}
+  table.resumen-table thead th{
+    background:#fff;color:#1c2333;font-weight:700;font-size:11px;text-align:center;letter-spacing:.2px;
+    position:sticky;top:0;z-index:10;
+  }
+  table.resumen-table .stk-c1, table.resumen-table .stk-c2, table.resumen-table .stk-c3, table.resumen-table .stk-marca, table.resumen-table .stk-grupo{
+    position:sticky;z-index:9;background:#fff;
+  }
+  table.resumen-table .stk-c1{left:0;width:150px;min-width:150px;max-width:150px;}
+  table.resumen-table .stk-c2{left:150px;width:70px;min-width:70px;max-width:70px;}
+  table.resumen-table .stk-c3{left:220px;width:130px;min-width:130px;max-width:130px;white-space:normal;word-break:break-word;}
+  table.resumen-table .stk-marca{left:350px;width:80px;min-width:80px;max-width:80px;}
+  table.resumen-table .stk-grupo{left:430px;width:85px;min-width:85px;max-width:85px;}
+  table.resumen-table .stk-lbl2{position:sticky;left:350px;z-index:9;}
+  table.resumen-table td.marca-cell.stk-marca{background:#d9e1f2;}
+  table.resumen-table thead th.stk-c1, table.resumen-table thead th.stk-c2,
+  table.resumen-table thead th.stk-c3, table.resumen-table thead th.stk-marca, table.resumen-table thead th.stk-grupo{z-index:20;}
+  td.block-side-cell{white-space:normal !important;word-break:break-word;}
+  tr.pct-row td{background:#eef3fb;font-weight:700;border-top:1px solid #b9c3dd;}
+  tr.grand-total-row td.grand-label.stk-lbl2{background:#a9d18e;}
+  tr.pct-row td.pct-label{text-align:center;background:#d9e1f2;color:#1c2333;}
+  tr.pct-row td.pct-val{text-align:center;font-variant-numeric:tabular-nums;color:#1c2333;}
+  td.block-side-cell{background:#ffffff;color:#1c2333;font-weight:700;text-align:center;letter-spacing:.4px;}
+  td.mes-cell{background:#ffffff;text-align:center;font-weight:700;}
+  td.embarque-main-cell{background:#ffffff;font-weight:400;text-align:center;}
+  td.marca-cell{text-align:center;background:#d9e1f2;color:#1c2333;}
+  td.grupo-cell{text-align:left;padding-left:10px;}
+  td.total-cell{font-weight:700;text-align:center;color:#c00000;}
+  td.channel-val{text-align:center;font-variant-numeric:tabular-nums;min-width:65px;}
+  tr.totals-group-row td{background:#ffffff;}
+  tr.totals-group-row td.subtot-label{font-weight:700;text-align:center;background:#ffffff;}
+  tr.totals-group-row td.total-cell{color:#c00000;font-weight:700;}
+  tr.grand-total-row td{background:#c6e0b4;font-weight:700;border-top:2px solid #a9d18e;}
+  tr.grand-total-row td.grand-label{text-align:center;background:#a9d18e;color:#1c2333;}
+  tr.grand-total-row td.grand-num{text-align:center;color:#c00000;font-variant-numeric:tabular-nums;}
+  tr.grand-total-row td.grand-channel{text-align:center;color:#1c2333;font-variant-numeric:tabular-nums;}
+  tr.empty-sep-row td{background:#f9fbfd;height:12px;border:none;}
+</style>
+</head>
+<body>
+<div class="topbar no-print">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="mark">M</div>
+      <div>
+        <div class="title">Medeport · Planificación de Embarques</div>
+        <div class="sub">Gantt Multi-Embarque · Adidas / Reebok</div>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <div class="sync-indicator" id="syncIndicator"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Iniciando…</span></div>
+      <button class="btn ghost" id="btnSyncCloud" title="Forzar sincronización local hacia Firebase">🔄 Subir a Nube</button>
+      <button class="btn ghost" id="btnExport">⬇ Exportar (JSON)</button>
+      <button class="btn ghost" id="btnImport">⬆ Importar</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none;">
+      <button class="btn" id="btnPrint">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="inputs">📋 Tabla de Entradas</button>
+    <button class="tab" data-view="adidas">🔴 Vista Adidas</button>
+    <button class="tab" data-view="reebok">🔵 Vista Reebok</button>
+    <button class="tab" data-view="consolidado">📊 Vista Consolidada</button>
+    <button class="tab" data-view="microprocesos">🔬 Microprocesos y Tareas</button>
+    <button class="tab" data-view="resumen">📑 Hoja de Resúmenes</button>
+  </div>
+</div>
+
+<div id="firebaseErrorBanner" style="display:none;" class="alerts-container no-print">
+  <div class="alert-banner danger" style="margin:10px 24px 0 24px;">
+    <span class="alert-icon">🔒</span>
+    <div class="alert-content">
+      <b>Aviso de permisos en Firebase Realtime Database:</b>
+      <p style="margin:4px 0 0 0;">Se está usando el modo de almacenamiento local (`localStorage`). Para activar la sincronización multiusuario en tiempo real, verifica que las reglas en la consola de Firebase tengan <code>".read": true</code> y <code>".write": true</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW: INPUTS ============ -->
+<div class="view active" id="view-inputs">
+  <div class="card">
+    <div class="card-head"><h2>Nuevo embarque</h2><span class="muted">Se recalculan todas las fechas automáticamente al guardar</span></div>
+    <div class="form-grid" id="shipmentForm">
+      <div class="field">
+        <label>Marca</label>
+        <select id="f_marca"><option value="ADIDAS">ADIDAS</option><option value="REEBOK">REEBOK</option><option value="ADI_RBK">ADI &amp; RBK (ambas marcas)</option></select>
+      </div>
+      <div class="field">
+        <label>Nombre embarque</label>
+        <input type="text" id="f_nombre" placeholder="PANAMA 48">
+      </div>
+      <div class="field">
+        <label>Tipo</label>
+        <select id="f_tipo"><option value="CONSUMO">CONSUMO</option><option value="DEPCO">DEPCO</option><option value="CONSOLIDADO_OTN">CONSOLIDADO (Salida OTN)</option></select>
+      </div>
+      <div class="field">
+        <label>Consolidado</label>
+        <input type="text" id="f_consolidado" placeholder="CONSOLIDADO 1 / N/A">
+      </div>
+      <div class="field">
+        <label>Fecha instrucción producto</label>
+        <input type="date" id="f_finstruccion">
+      </div>
+      <div class="field">
+        <label>Fecha arribo DEPCO (opc.)</label>
+        <input type="date" id="f_farribodepco">
+      </div>
+      <div class="field">
+        <label>Fecha arribo CD (opc.)</label>
+        <input type="date" id="f_farribocd">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn" id="btnAddShipment" style="background:var(--navy);color:#fff;">+ Agregar embarque</button>
+      <button class="btn" id="btnCancelEdit" style="display:none;background:#eee;">Cancelar edición</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Embarques registrados</h2><span class="muted" id="countShipments">0 embarques</span></div>
+    <div class="filter-bar" data-view="inputs"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Marca</th><th>Embarque</th><th>Tipo</th><th>Consolidado</th>
+            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="shipmentsTbody"></tbody>
+      </table>
+      <div class="empty" id="emptyShipments" style="display:none;">Aún no hay embarques. Agrega el primero con el formulario de arriba.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Feriados nacionales</h2><span class="muted">Un valor por línea, formato AAAA-MM-DD. Se excluyen del cálculo de días hábiles.</span></div>
+    <textarea id="holidaysBox" rows="4" style="width:100%;" placeholder="2026-01-01&#10;2026-05-01&#10;2026-12-25"></textarea>
+    <div style="margin-top:10px;"><button class="btn" id="btnSaveHolidays" style="background:var(--accent);color:#fff;">Guardar feriados</button></div>
+  </div>
+</div>
+<!-- ============ VIEW: ADIDAS ============ -->
+<div class="view" id="view-adidas">
+  <div class="card-head" style="margin-bottom:6px;">
+    <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
+  </div>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <div class="filter-bar" data-view="adidas"></div>
+  <div id="adidasAlerts" class="alerts-container"></div>
+  <div id="adidasContainer"></div>
+</div>
+<!-- ============ VIEW: REEBOK ============ -->
+<div class="view" id="view-reebok">
+  <div class="card-head" style="margin-bottom:6px;">
+    <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
+  </div>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <div class="filter-bar" data-view="reebok"></div>
+  <div id="reebokAlerts" class="alerts-container"></div>
+  <div id="reebokContainer"></div>
+</div>
+<!-- ============ VIEW: CONSOLIDADO ============ -->
+<div class="view" id="view-consolidado">
+  <div class="card">
+    <div class="card-head">
+      <h2>📊 Resumen consolidado del mes</h2>
+      <div class="month-picker">
+        <label class="muted" style="font-size:12px;">Mes:</label>
+        <select id="monthPicker"></select>
+      </div>
+    </div>
+    <div class="filter-bar" data-view="consolidado"></div>
+    <div id="consolidadoAlerts" class="alerts-container"></div>
+    <div id="consolidadoGrid" class="gantt-scroll"></div>
+    <div class="empty" id="emptyConsolidado" style="display:none;">No hay embarques con fechas en el mes seleccionado.</div>
+  </div>
+</div>
+<!-- ============ VIEW: MICROPROCESOS Y TAREAS ============ -->
+<div class="view" id="view-microprocesos">
+  <div class="card">
+    <div class="card-head">
+      <h2>🔬 Microprocesos y Tareas</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="btnAddMicro" style="background:var(--navy);color:#fff;">+ Agregar Actividad</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
+      Cada embarque de la <b>Tabla de Entradas</b> genera su propio checklist sincronizado en la nube para todo el equipo.
+    </p>
+    <div class="filter-bar" data-view="microprocesos"></div>
+    <div id="microAlerts" class="alerts-container"></div>
+    <div class="micro-filters">
+      <div class="field" style="min-width:280px;">
+        <label>Embarque</label>
+        <select id="microShipmentSelect"></select>
+      </div>
+      <div class="field">
+        <label>Filtro por estado</label>
+        <select id="microStatusFilter">
+          <option value="TODOS">TODOS</option>
+          <option value="COMPLETO">COMPLETO</option>
+          <option value="PENDIENTE">PENDIENTE</option>
+          <option value="N/A">N/A</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:220px;">
+        <label>Buscar actividad / observación</label>
+        <input type="text" id="microSearch" placeholder="Ej. partidas arancelarias, LPN, OTN...">
+      </div>
+      <div class="micro-counter">
+        <span>📋 <span id="microCount">0</span> actividades</span>
+        <span>✅ <span id="microDoneCount">0</span> completadas</span>
+      </div>
+    </div>
+    <div class="micro-table-wrap">
+      <table class="micro-table" id="microTable">
+        <thead id="microThead"></thead>
+        <tbody id="microTbody"></tbody>
+      </table>
+      <div class="empty" id="emptyMicro" style="display:none;">No hay actividades que coincidan con el filtro/búsqueda actual.</div>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL: AGREGAR / EDITAR MICROPROCESO ============ -->
+<div class="modal-overlay" id="microModal">
+  <div class="modal-box">
+    <h3 id="microModalTitle">+ Agregar Actividad</h3>
+    <div class="modal-grid">
+      <div class="field"><label>Orden / Paso</label><input type="number" step="1" id="m_ord" placeholder="Ej. 12"></div>
+      <div class="field full"><label>Actividad</label><input type="text" id="m_act" placeholder="Descripción de la actividad"></div>
+      <div class="field full" id="m_singleTrackWrap">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>Status</label>
+            <select id="m_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>Fecha</label><input type="date" id="m_fecha"></div>
+          <div class="field"><label>Obs</label><input type="text" id="m_obs"></div>
+        </div>
+      </div>
+      <div class="field full" id="m_adidasWrap" style="display:none;">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>ADIDAS · Status</label>
+            <select id="m_adidas_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>ADIDAS · Fecha</label><input type="date" id="m_adidas_fecha"></div>
+          <div class="field"><label>ADIDAS · Obs</label><input type="text" id="m_adidas_obs"></div>
+        </div>
+      </div>
+      <div class="field full" id="m_reebokWrap" style="display:none;">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>REEBOK · Status</label>
+            <select id="m_reebok_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>REEBOK · Fecha</label><input type="date" id="m_reebok_fecha"></div>
+          <div class="field"><label>REEBOK · Obs</label><input type="text" id="m_reebok_obs"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnMicroCancel" style="background:#eee;">Cancelar</button>
+      <button class="btn" id="btnMicroSave" style="background:var(--navy);color:#fff;">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+<!-- ============ VIEW: HOJA DE RESÚMENES ============ -->
+<div class="view" id="view-resumen">
+  <div class="card">
+    <div class="card-head">
+      <h2>📑 Hoja de Resúmenes Sintetizada (Estilo Calendario de Embarques)</h2>
+      <div class="resumen-actions">
+        <button class="btn" id="btnExportResumen" style="background:var(--ok);color:#fff;">⬇ Exportar mes a Excel</button>
+        <button class="btn ghost" id="btnClearResumenMonth" style="background:#eee;color:var(--danger);">🧹 Limpiar mes</button>
+      </div>
+    </div>
+    <div class="month-tabs" id="resumenMonthTabs">
+      <button class="month-btn active" data-mes="JULIO">JULIO</button>
+      <button class="month-btn" data-mes="AGOSTO">AGOSTO</button>
+      <button class="month-btn" data-mes="SEPTIEMBRE">SEPTIEMBRE</button>
+      <button class="month-btn" data-mes="OCTUBRE">OCTUBRE</button>
+      <button class="month-btn" data-mes="NOVIEMBRE">NOVIEMBRE</button>
+      <button class="month-btn" data-mes="DICIEMBRE">DICIEMBRE</button>
+    </div>
+    <div class="resumen-toolbar">
+      <div class="dropzone" id="resumenDropzone">
+        📤 Arrastra aquí tu archivo Excel (.xlsx), o <b>haz clic para seleccionarlo</b><br>
+        <span style="font-size:11px;">Soporta: OC Consolidada, OC LPN Consolidado, Intercompany y Base Quick. Sincronizado en vivo.</span>
+        <input type="file" id="resumenFileInput" accept=".xlsx,.xls" multiple style="display:none;">
+      </div>
+    </div>
+    <div class="import-log" id="resumenImportLog" style="display:none;"></div>
+    <div class="resumen-remove-row">
+      <div class="field" style="min-width:280px;">
+        <label>Quitar un embarque / intercompany del mes</label>
+        <select id="resumenGroupSelect"><option value="">— Selecciona —</option></select>
+      </div>
+      <button class="btn small danger" id="btnRemoveResumenGroup">🗑️ Quitar del mes</button>
+    </div>
+    <div class="resumen-table-wrap">
+      <table class="resumen-table" id="resumenTable">
+        <thead id="resumenThead"></thead>
+        <tbody id="resumenTbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyResumen" style="display:none;">No hay datos cargados para este mes todavía. Arrastra un archivo Excel arriba para comenzar.</div>
+  </div>
+</div>
+
+<footer class="hint no-print">
+  <b>Modo Híbrido:</b> Sincronización en la nube con respaldo local autoguardado en tiempo real.
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBQvCoA6p83012z95pvb0012hkjmrj5Ssk",
+  authDomain: "embarques-mdp-7c49b.firebaseapp.com",
+  databaseURL: "https://embarques-mdp-7c49b-default-rtdb.firebaseio.com",
+  projectId: "embarques-mdp-7c49b",
+  storageBucket: "embarques-mdp-7c49b.firebasestorage.app",
+  messagingSenderId: "114901426718",
+  appId: "1:114901426718:web:c3cbaf5db203e62c76040f"
+};
+const FIREBASE_PATH = "medeport";
+const LOCAL_STORAGE_KEY = "medeport_backup_v2";
+
+let cloudMode = false;
+let db = null;
+let shipmentsRef = null;
+let holidaysRef = null;
+let microRef = null;
+let resumenRef = null;
+let connectedRef = null;
+
+function setSyncStatus(mode){
+  const dot = document.getElementById("syncDot");
+  const label = document.getElementById("syncLabel");
+  if(!dot || !label) return;
+  dot.className = "sync-dot " + mode;
+  if(mode==="online") label.textContent = "Sincronizado (Nube + Local)";
+  else if(mode==="offline") label.textContent = "Sin conexión (Autoguardado Local)";
+  else label.textContent = "Autoguardado local activo";
+}
+
+function saveLocalBackup(){
+  try{
+    const payload = {
+      shipmentsMap: state.shipmentsMap,
+      holidays: state.holidays,
+      microItems: microState.items,
+      resumenMonths: resumenState.months,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+  }catch(e){
+    console.warn("No se pudo guardar copia local:", e);
+  }
+}
+
+function loadLocalBackup(){
+  try{
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if(!raw) return false;
+    const payload = JSON.parse(raw);
+    if(payload.shipmentsMap) state.shipmentsMap = payload.shipmentsMap;
+    if(payload.holidays) state.holidays = payload.holidays;
+    if(payload.microItems) microState.items = payload.microItems;
+    if(payload.resumenMonths) resumenState.months = payload.resumenMonths;
+    return true;
+  }catch(e){
+    console.error("Error cargando copia local:", e);
+    return false;
+  }
+}
+
+function initFirebase(){
+  loadLocalBackup();
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    shipmentsRef = db.ref(FIREBASE_PATH + "/embarques");
+    holidaysRef = db.ref(FIREBASE_PATH + "/holidays");
+    microRef = db.ref(FIREBASE_PATH + "/microprocesos");
+    resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
+    connectedRef = db.ref(".info/connected");
+    cloudMode = true;
+    
+    connectedRef.on("value", (snap)=>{
+      setSyncStatus(snap.val() === true ? "online" : "offline");
+    });
+    
+    shipmentsRef.on("value",(snap)=>{
+      shipmentsLoaded = true;
+      const val = snap.val();
+      if(val) state.shipmentsMap = val;
+      saveLocalBackup();
+      renderAll();
+    }, (err)=>{
+      console.warn("Error leyendo embarques de Firebase:", err);
+      shipmentsLoaded = true;
+      document.getElementById("firebaseErrorBanner").style.display = "block";
+      setSyncStatus("local");
+    });
+    
+    holidaysRef.on("value",(snap)=>{
+      const val = snap.val();
+      if(val) state.holidays = Array.isArray(val) ? val : Object.values(val);
+      const hBox = document.getElementById("holidaysBox");
+      if(hBox) hBox.value = state.holidays.join("\n");
+      saveLocalBackup();
+      renderAll();
+    });
+    
+    microRef.on("value", (snap)=>{
+      const val = snap.val();
+      const firstLoad = !microLoaded;
+      if(val){
+        microState.items = Array.isArray(val)
+          ? val.filter(Boolean)
+          : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
+      } else if(firstLoad && microState.items.length){
+        // La nube está vacía pero hay respaldo local: subirlo SIN sobrescribir nada existente
+        microCreateIfMissing(microState.items.filter(it=> it && it.id && (!it.shipmentId || state.shipmentsMap[it.shipmentId])));
+      }
+      microLoaded = true;
+      ensureTasksForAllShipments();
+      saveLocalBackup();
+      const ae = document.activeElement;
+      const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
+      if(!typing) renderMicroprocesos();
+      checkAllAlerts();
+    }, (err)=>{
+      console.warn("Error leyendo microprocesos de Firebase:", err);
+      microLoaded = true;
+      document.getElementById("firebaseErrorBanner").style.display = "block";
+      setSyncStatus("local");
+    });
+
+    resumenRef.on("value",(snap)=>{
+      const val = snap.val();
+      if(val && typeof val === "object"){
+        resumenState.months = val;
+        saveLocalBackup();
+        renderResumen();
+      }
+    });
+  }catch(err){
+    console.warn("Error inicializando Firebase. Usando autoguardado local:", err);
+    setSyncStatus("local");
+    cloudMode = false;
+  }
+}
+
+const state = {
+  shipmentsMap: {},
+  holidays: [],
+  editingId: null
+};
+
+function getShipmentsArray(){
+  return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
+}
+
+function generateId(){
+  return "sh_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+}
+
+const RESPONSABLE_HORA = "5:30pm";
+const MARCA_LABELS = {ADIDAS:"ADIDAS", REEBOK:"REEBOK", ADI_RBK:"ADI & RBK"};
+function marcaLabel(marca){ return MARCA_LABELS[marca] || marca; }
+const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLIDADO (Salida OTN)"};
+function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
+function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
+function shipmentBelongsToBrand(sh, marca){ return sh.marca === marca || sh.marca === "ADI_RBK"; }
+
+function parseISO(str){
+  if(!str) return null;
+  const [y,m,d] = str.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+function toISO(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function fmtDMY(date){
+  if(!date) return "—";
+  const d = String(date.getDate()).padStart(2,"0");
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+function isWeekend(date){
+  const dow = date.getDay();
+  return dow === 0 || dow === 6;
+}
+function isHoliday(date){
+  return state.holidays.includes(toISO(date));
+}
+function isNonWorking(date){
+  return isWeekend(date) || isHoliday(date);
+}
+function addBusinessDays(date, days){
+  let result = new Date(date.getTime());
+  let remaining = Math.abs(days);
+  const step = days >= 0 ? 1 : -1;
+  while(remaining > 0){
+    result.setDate(result.getDate() + step);
+    if(!isNonWorking(result)){
+      remaining--;
+    }
+  }
+  return result;
+}
+function dateRange(start, end){
+  const days = [];
+  let cur = new Date(start.getTime());
+  while(cur <= end){
+    days.push(new Date(cur.getTime()));
+    cur.setDate(cur.getDate()+1);
+  }
+  return days;
+}
+const DOW_LETTERS = ["D","L","M","M","J","V","S"];
+
+function bar(key,label,resp,color,start,end,zone,textDark,bordered){
+  return {key,label,responsable:resp,color,start,end:end||start,zone:zone||"main",textDark:!!textDark,bordered:!!bordered};
+}
+function applyCustomDates(sh, acts){
+  if(!sh.customDates) return acts;
+  return acts.map(a=>{
+    if(sh.customDates[a.key]){
+      const c = sh.customDates[a.key];
+      const start = parseISO(c.start);
+      const end = parseISO(c.end || c.start);
+      if(start && end){
+        return {...a, start, end, isCustom: true};
+      }
+    }
+    return a;
+  });
+}
+function computeActivities(sh){
+  const d0 = parseISO(sh.fechaInstruccion);
+  if(!d0) return [];
+  if(sh.tipo === "CONSUMO") return computeConsumo(sh, d0);
+  if(sh.tipo === "DEPCO") return computeDepco(sh, d0);
+  return computeConsolidadoOTN(sh, d0);
+}
+function computeConsumo(sh, d0){
+  const a1 = d0;
+  const a2 = addBusinessDays(a1,1);
+  const a3 = addBusinessDays(a2,1);
+  const a4 = addBusinessDays(a3,1);
+  const a6 = addBusinessDays(a4,1);
+  const a7 = addBusinessDays(a6,1);
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(a7,6);
+  const cdEnd = addBusinessDays(cdStart,2);
+  const intercompanyDate = addBusinessDays(cdStart, -7);
+  const trasladosDate = addBusinessDays(cdStart, -4);
+  const defaultBars = [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",a1,a1,"main"),
+    bar("embarque","Instrucciones de Embarque","COMEX","#A6A6A6",a2,a2,"main",true),
+    bar("oc_plan","OC Planificación","Planificación","#1B2A4A",a3,a3,"main"),
+    bar("oc_canal","OC Canal Final / Precio Final","Producto","#7030A0",a4,a4,"main"),
+    bar("intercompany","Intercompany / Ingreso Mayorista","Planificación","#FFFF00",intercompanyDate,intercompanyDate,"top",true),
+    bar("partidas","Carga Partidas Arancelarias","COMEX","#00FFFF",a6,a6,"main",true),
+    bar("distribucion","Distribución Tiendas","Tiendas","#5B9BD5",a7,a7,"main"),
+    bar("ocas","OCAs / OCIs / Traslados / Etiquetas / LPN","Planificación a CD","#C55A11",trasladosDate,trasladosDate,"main"),
+    bar("lpn","LPN","Planificación a CD","#A9D18E",trasladosDate,trasladosDate,"bottom",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+  return applyCustomDates(sh, defaultBars);
+}
+function computeDepco(sh, d0){
+  const b1 = d0;
+  const b2 = addBusinessDays(b1,1);
+  const b3 = addBusinessDays(b2,1);
+  const b4 = addBusinessDays(b3,1);
+  const b5 = addBusinessDays(b4,1);
+  const b6 = addBusinessDays(b5,2);
+  const b7 = addBusinessDays(b6,1);
+  const depcoStart = sh.fechaArriboDepco ? parseISO(sh.fechaArriboDepco) : addBusinessDays(b7,2);
+  const depcoEnd = addBusinessDays(depcoStart,2);
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(depcoEnd,1);
+  const cdEnd = addBusinessDays(cdStart,2);
+  const otn = addBusinessDays(depcoStart,-3);
+  const intercompany = addBusinessDays(cdStart,-7);
+  const defaultBars = [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",b1,b1,"main"),
+    bar("embarque","Instrucciones de Embarque","COMEX","#A6A6A6",b2,b2,"main",true),
+    bar("oc_carton","OC Planificación a nivel de Cartón","Planificación","#1B2A4A",b3,b3,"main"),
+    bar("oc_canal","OC con Canal Final / Precios","Producto","#7030A0",b4,b4,"main"),
+    bar("envio_pedido","Envío de Pedido a COMEX","COMEX","#29B6F6",b5,b5,"main",true),
+    bar("partidas","Carga Partidas Arancelarias","COMEX","#00FFFF",b6,b6,"main",true),
+    bar("ocas_ocis_lpn","Ocas / Ocis / LPN","Planificación","#C55A11",b7,b7,"main"),
+    bar("intercompany","Intercompany / Canal Mayorista","Planificación","#FFFF00",intercompany,intercompany,"top",true),
+    bar("otn","OTN / Traslados / Etiquetas / Microsite","Planificación","#F4B183",otn,otn,"bottom",true),
+    bar("ingreso_depco","Ingreso Embarque a DEPCO","Logística","#70AD47",depcoStart,depcoEnd,"main",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+  return applyCustomDates(sh, defaultBars);
+}
+function computeConsolidadoOTN(sh, d0){
+  const c1 = d0;
+  const c2 = addBusinessDays(c1,1);
+  const c3 = addBusinessDays(c2,1);
+  const c5 = addBusinessDays(c3,2);
+  const c6 = addBusinessDays(c5,1);
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(c6,1);
+  const cdEnd = addBusinessDays(cdStart,2);
+  const intercompany = addBusinessDays(cdStart,-7);
+  const traslados = addBusinessDays(cdStart,-4);
+  const defaultBars = [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",c1,c1,"main"),
+    bar("envio_pedido","Envío del pedido a COMEX","Planificación","#29B6F6",c2,c2,"main",true),
+    bar("ingresos_tiendas","Ingresos Tiendas / Ref. Compra","Planificación","#FCE4D6",c3,c3,"main",true),
+    bar("intercompany","Intercompany / Mayorista / Precios","Planificación","#FFFF00",intercompany,intercompany,"top",true,true),
+    bar("distribucion","Distribución Tiendas FQ / Súper","Producto/Tiendas","#8EA9DB",c5,c5,"main"),
+    bar("otn","OTN / Traslados / Etiquetas / Microsite / LPN","Planificación","#F4B183",traslados,traslados,"bottom",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+  return applyCustomDates(sh, defaultBars);
+}
+
+const GANTT_TO_MICRO_MAPPING = {
+  "importacion": ["Instrucciones de importación por producto"],
+  "embarque": ["Instrucciones de embarque por comex"],
+  "oc_plan": ["Envío OC a producto"],
+  "oc_carton": ["Envío OC (LPN) a producto"],
+  "oc_canal": ["Trabajar respuesta OC de Silvi/Pao"],
+  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "Trabajar Archivos Intercompany:"],
+  "partidas": ["Carga partidas arancelarias"],
+  "envio_pedido": ["*Envío del pedido a COMEX", "*Envío de pedido a comex"],
+  "distribucion": ["Respuesta de distribución de tiendas"],
+  "ocas": ["Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN", "Elaboración Plantilla OCA"],
+  "ocas_ocis_lpn": ["Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"],
+  "otn": ["Enviar número de OTN a COMEX"],
+  "lpn": ["LPN", "Enviar LPN Embarque"]
+};
+function getAlertsForShipment(sh){
+  const alerts = [];
+  const acts = computeActivities(sh);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const shMicroItems = microState.items.filter(it=> it.shipmentId === sh.id);
+  acts.forEach(a=>{
+    const endDate = new Date(a.end.getTime());
+    endDate.setHours(0,0,0,0);
+    if(endDate <= now){
+      const possibleTaskNames = GANTT_TO_MICRO_MAPPING[a.key] || [a.label];
+      const relatedTasks = shMicroItems.filter(t => 
+        possibleTaskNames.some(name => t.act && t.act.toLowerCase().includes(name.toLowerCase()))
+      );
+      relatedTasks.forEach(task => {
+        let isComplete = false;
+        if(task.trackMode === "DUAL"){
+          if(sh.marca === "ADIDAS") isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+          else if(sh.marca === "REEBOK") isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+          else isComplete = (task.adidas_status === "COMPLETO" || task.adidas_status === "N/A") && (task.reebok_status === "COMPLETO" || task.reebok_status === "N/A");
+        } else if(task.trackMode === "ADIDAS_ONLY"){
+          isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+        } else if(task.trackMode === "REEBOK_ONLY"){
+          isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+        } else {
+          isComplete = task.status === "COMPLETO" || task.status === "N/A";
+        }
+        if(!isComplete){
+          alerts.push({
+            barKey: a.key,
+            activityLabel: a.label,
+            taskLabel: task.act,
+            dueDate: a.end,
+            shipmentName: sh.nombre,
+            shipmentId: sh.id,
+            marca: sh.marca
+          });
+        }
+      });
+    }
+  });
+  return alerts;
+}
+function enviarAlertaPorPowerAutomate(alertas) {
+  if (!alertas || alertas.length === 0) return;
+
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const hoyStr = hoy.toISOString().slice(0, 10);
+
+  // Control para no enviar correos repetidos el mismo día
+  if (localStorage.getItem("ultimo_correo_alerta") === hoyStr) return;
+
+  let resumen = "Hola,\n\nSe presenta el resumen actualizado de actividades de embarques en Medeport:\n\n";
+
+  alertas.forEach(a => {
+    const fechaLimite = new Date(a.dueDate);
+    fechaLimite.setHours(0,0,0,0);
+
+    let estadoTexto = "";
+    if (fechaLimite < hoy) {
+      estadoTexto = `🚨 ESTÁ ATRASADA (Venció el ${fmtDMY(a.dueDate)})`;
+    } else {
+      estadoTexto = `📌 ESTÁ PENDIENTE PARA HOY (${fmtDMY(a.dueDate)})`;
+    }
+
+    resumen += `• [${a.marca}] Embarque: "${a.shipmentName}"\n`;
+    resumen += `  Actividad: ${a.activityLabel}\n`;
+    resumen += `  Estado: ${estadoTexto}\n\n`;
+  });
+
+  resumen += "Por favor ingresar al sistema para actualizar el estado de los microprocesos.\n\nSaludos,";
+
+  // Tu URL de Power Automate
+  const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bftl1Cy-S_cvpjyC2b1KdS6dnNWVsWQgHUCZo3cayB8";
+
+  const payload = {
+    // Reemplaza con las direcciones reales separadas por punto y coma (;)
+    destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com",
+    asunto: "⚠️ Notificación de Actividades y Embarques - Medeport",
+    mensaje: resumen
+  };
+
+  fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (res.ok) {
+      console.log("📧 Correo de alerta enviado vía Outlook.");
+      localStorage.setItem("ultimo_correo_alerta", hoyStr);
+      showToast("📧 Notificación enviada a Outlook corporativo");
+    }
+  })
+  .catch(err => console.error("Error al enviar la alerta:", err));
+}
+function checkAllAlerts(){
+  const shipments = getShipmentsArray();
+  let allAlerts = [];
+  shipments.forEach(sh=>{
+    const shAlerts = getAlertsForShipment(sh);
+    allAlerts = allAlerts.concat(shAlerts);
+  });
+
+  renderAlertsUI(allAlerts);
+
+  if (allAlerts.length > 0) {
+    enviarAlertaPorPowerAutomate(allAlerts);
+  }
+
+  return allAlerts;
+}
+function renderAlertsUI(alerts){
+  const adidasAlertsEl = document.getElementById("adidasAlerts");
+  const reebokAlertsEl = document.getElementById("reebokAlerts");
+  const consolidadoAlertsEl = document.getElementById("consolidadoAlerts");
+  const microAlertsEl = document.getElementById("microAlerts");
+  const alertsFor = (vk, arr) => arr.filter(a=> shipmentMatchesFilter(vk, state.shipmentsMap[a.shipmentId]));
+  const buildBanner = (filtered, title) => {
+    if(filtered.length === 0) return "";
+    const list = filtered.map(a=>`<li><b>${escapeHtml(a.shipmentName)}</b> (${marcaLabel(a.marca)}): La actividad <i>"${escapeHtml(a.activityLabel)}"</i> debió completarse el ${fmtDMY(a.dueDate)}.</li>`).join("");
+    return `
+      <div class="alert-banner danger">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+          <b>${title} (${filtered.length} tareas pendientes con fecha vencida en Gantt):</b>
+          <ul>${list}</ul>
+        </div>
+      </div>`;
+  };
+  if(adidasAlertsEl){
+    const adis = alertsFor("adidas", alerts.filter(a=> a.marca === "ADIDAS" || a.marca === "ADI_RBK"));
+    adidasAlertsEl.innerHTML = buildBanner(adis, "Alertas de Microprocesos Pendientes - ADIDAS");
+  }
+  if(reebokAlertsEl){
+    const rbks = alertsFor("reebok", alerts.filter(a=> a.marca === "REEBOK" || a.marca === "ADI_RBK"));
+    reebokAlertsEl.innerHTML = buildBanner(rbks, "Alertas de Microprocesos Pendientes - REEBOK");
+  }
+  if(consolidadoAlertsEl){
+    consolidadoAlertsEl.innerHTML = buildBanner(alertsFor("consolidado", alerts), "Atención: Actividades atrasadas en el cronograma consolidado");
+  }
+  if(microAlertsEl){
+    microAlertsEl.innerHTML = buildBanner(alertsFor("microprocesos", alerts), "Pendientes Críticos según Cronograma Gantt");
+  }
+}
+
+function renderShipmentGantt(sh){
+  const acts = computeActivities(sh);
+  if(acts.length === 0){
+    return `<div class="shipment-block"><div class="empty">Falta la fecha de instrucción de producto.</div></div>`;
+  }
+  let minDate = acts[0].start, maxDate = acts[0].end;
+  acts.forEach(a=>{
+    if(a.start < minDate) minDate = a.start;
+    if(a.end > maxDate) maxDate = a.end;
+  });
+  const days = dateRange(minDate, maxDate);
+  const colCount = days.length;
+  const templateCols = `repeat(${colCount}, minmax(30px,1fr))`;
+  let headerCells = "";
+  days.forEach(d=>{
+    const cls = ["day-head"];
+    if(isWeekend(d)) cls.push("weekend");
+    if(isHoliday(d)) cls.push("holiday");
+    headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
+  });
+  
+  const shAlerts = getAlertsForShipment(sh);
+  function rowForBars(barsInRow){
+    let cells = "";
+    for(let i=0;i<colCount;i++){
+      const d = days[i];
+      cells += `<div class="row-track drop-target ${isWeekend(d)?'weekend-col':''}" data-date="${toISO(d)}" data-shipment-id="${sh.id}" style="grid-column:${i+1}/${i+2};"></div>`;
+    }
+    barsInRow.forEach(a=>{
+      const startIdx = Math.round((a.start - minDate)/86400000)+1;
+      const endIdx = Math.round((a.end - minDate)/86400000)+2;
+      const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''} ${a.isCustom?'is-custom':''} ${hasAlert?'has-alert':''}" 
+                     draggable="true" 
+                     data-shipment-id="${sh.id}" 
+                     data-bar-key="${a.key}" 
+                     data-duration="${Math.round((a.end - a.start)/86400000)}" 
+                     style="grid-column:${startIdx}/${endIdx}; background:${a.color};" 
+                     title="${a.label} (${a.responsable}) — ${fmtDMY(a.start)}${a.isCustom ? ' [Ajustada manualmente]' : ''}${hasAlert ? ' ⚠️ [ALERTA: Tarea incompleta en Microprocesos]' : ''}&#10;Arrastra a otro día para moverla">${hasAlert ? '⚠️ ' : ''}${escapeHtml(a.label)}</div>`;
+    });
+    return `<div class="gantt-grid" style="grid-template-columns:${templateCols};margin-bottom:4px;">${cells}</div>`;
+  }
+  
+  const topRow = acts.filter(a=>a.zone==="top");
+  const mainRow = acts.filter(a=>a.zone==="main");
+  const bottomRow = acts.filter(a=>a.zone==="bottom");
+  const headerRow = `<div class="gantt-grid" style="grid-template-columns:${templateCols};">${headerCells}</div>`;
+  const sortedActs = [...acts].sort((a,b)=>a.start-b.start);
+  let legendRows = sortedActs.map(a=>{
+    const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
+    return `
+    <tr>
+      <td><span class="sw" style="background:${a.color};"></span></td>
+      <td>${escapeHtml(a.label)}${a.isCustom ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;">(Manual)</span>' : ''}${hasAlert ? ' <span style="font-size:10px;color:var(--danger);font-weight:700;">⚠️ Incompleto</span>' : ''}</td>
+      <td>${RESPONSABLE_HORA}</td>
+      <td>${a.responsable}</td>
+      <td>${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' — '+fmtDMY(a.end):''}</td>
+    </tr>`;
+  }).join("");
+  const hasCustomDates = sh.customDates && Object.keys(sh.customDates).length > 0;
+  return `
+  <div class="shipment-block">
+    <div class="shipment-header">
+      <span class="tag-marca ${sh.marca}">${marcaLabel(sh.marca)}</span>
+      <span class="tag-name">${escapeHtml(sh.nombre)}</span>
+      <span class="tag-tipo-${sh.tipo}">${tipoLabel(sh.tipo)}</span>
+      ${sh.consolidado ? `<span class="tag-consol">${escapeHtml(sh.consolidado)}</span>` : ""}
+      <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b></span>
+      ${hasCustomDates ? `<button class="btn small ghost" data-action="reset-dates" data-id="${sh.id}" style="color:var(--navy);background:#fff;border-color:#d0d7de;">↺ Restablecer fechas</button>` : ''}
+    </div>
+    <div class="gantt-scroll">
+      ${headerRow}
+      ${topRow.length ? `<div class="zone-caption">Sub-bloque superior</div>${rowForBars(topRow)}` : ""}
+      ${rowForBars(mainRow)}
+      ${bottomRow.length ? `<div class="zone-caption">Sub-bloque inferior</div>${rowForBars(bottomRow)}` : ""}
+    </div>
+    <div style="padding:0 14px 14px 14px;">
+      <table class="legend-table">
+        <thead><tr><th></th><th>Actividad</th><th>Hora límite</th><th>Responsable</th><th>Fecha</th></tr></thead>
+        <tbody>${legendRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function renderBrandView(marca, containerId){
+  const container = document.getElementById(containerId);
+  const vk = marca==="ADIDAS" ? "adidas" : "reebok";
+  const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca) && shipmentMatchesFilter(vk,s)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  if(list.length===0){
+    container.innerHTML = isFilterActive(vk)
+      ? `<div class="empty">No hay embarques de ${marcaLabel(marca)} con fecha de instrucción en el mes/año seleccionado.</div>`
+      : `<div class="empty">No hay embarques de ${marcaLabel(marca)} registrados.</div>`;
+    return;
+  }
+  container.innerHTML = list.map(renderShipmentGantt).join("");
+  bindGanttDragAndDrop();
+}
+
+let draggedBarPayload = null;
+function bindGanttDragAndDrop(){
+  document.querySelectorAll(".act-bar[draggable=true]").forEach(bar=>{
+    bar.addEventListener("dragstart", (e)=>{
+      draggedBarPayload = {
+        shipmentId: bar.dataset.shipmentId,
+        barKey: bar.dataset.barKey,
+        duration: parseInt(bar.dataset.duration || "0", 10)
+      };
+      e.dataTransfer.setData("application/json", JSON.stringify(draggedBarPayload));
+      e.dataTransfer.effectAllowed = "move";
+      bar.classList.add("dragging");
+    });
+    bar.addEventListener("dragend", ()=>{
+      bar.classList.remove("dragging");
+      document.querySelectorAll(".drop-target.drag-over").forEach(el=>el.classList.remove("drag-over"));
+    });
+  });
+  document.querySelectorAll(".drop-target").forEach(track=>{
+    track.addEventListener("dragover", (e)=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      track.classList.add("drag-over");
+    });
+    track.addEventListener("dragleave", ()=>{
+      track.classList.remove("drag-over");
+    });
+    track.addEventListener("drop", (e)=>{
+      e.preventDefault();
+      track.classList.remove("drag-over");
+      let data = draggedBarPayload;
+      if(!data){
+        try{
+          data = JSON.parse(e.dataTransfer.getData("application/json"));
+        }catch(err){}
+      }
+      if(!data || data.shipmentId !== track.dataset.shipmentId) return;
+      const targetDate = parseISO(track.dataset.date);
+      if(!targetDate) return;
+      const newStart = targetDate;
+      const newEnd = new Date(targetDate.getTime() + (data.duration * 86400000));
+      const sh = state.shipmentsMap[data.shipmentId];
+      if(!sh) return;
+      if(!sh.customDates) sh.customDates = {};
+      sh.customDates[data.barKey] = {
+        start: toISO(newStart),
+        end: toISO(newEnd)
+      };
+      saveShipment(data.shipmentId, sh);
+      renderAll();
+      showToast("📅 Fecha ajustada correctamente");
+    });
+  });
+}
+document.addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-action='reset-dates']");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const sh = state.shipmentsMap[id];
+  if(sh && confirm("¿Deseas restablecer todas las fechas calculadas automáticamente para este embarque?")){
+    delete sh.customDates;
+    saveShipment(id, sh);
+    renderAll();
+    showToast("↺ Fechas automáticas restablecidas");
+  }
+});
+
+function getAvailableMonths(){
+  const set = new Set();
+  getShipmentsArray().forEach(s=>{
+    if(s.fechaInstruccion) set.add(s.fechaInstruccion.slice(0,7));
+    computeActivities(s).forEach(a=>{
+      set.add(toISO(a.start).slice(0,7));
+      set.add(toISO(a.end).slice(0,7));
+    });
+  });
+  const arr = Array.from(set).sort();
+  if(arr.length===0){
+    const now = new Date();
+    arr.push(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
+  }
+  return arr;
+}
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+function populateMonthPicker(){
+  const picker = document.getElementById("monthPicker");
+  if(!picker) return;
+  const months = getAvailableMonths();
+  const prevVal = picker.value;
+  picker.innerHTML = months.map(m=>{
+    const [y,mm] = m.split("-").map(Number);
+    return `<option value="${m}">${MONTH_NAMES[mm-1]} ${y}</option>`;
+  }).join("");
+  if(months.includes(prevVal)) picker.value = prevVal;
+}
+function renderConsolidated(){
+  populateMonthPicker();
+  const picker = document.getElementById("monthPicker");
+  if(!picker) return;
+  const ym = picker.value || getAvailableMonths()[0];
+  const [y,m] = ym.split("-").map(Number);
+  const monthStart = new Date(y, m-1, 1);
+  const monthEnd = new Date(y, m, 0);
+  const days = dateRange(monthStart, monthEnd);
+  const colCount = days.length;
+  const templateCols = `repeat(${colCount}, minmax(26px,1fr))`;
+  const rows = [];
+  getShipmentsArray().forEach(s=>{
+    if(!shipmentMatchesFilter("consolidado", s)) return;
+    const acts = computeActivities(s);
+    if(acts.length===0) return;
+    const touches = acts.some(a=> a.end >= monthStart && a.start <= monthEnd);
+    if(touches) rows.push({sh:s, acts, cd: acts.find(a=>a.key==="ingreso_cd")});
+  });
+  const gridEl = document.getElementById("consolidadoGrid");
+  const emptyEl = document.getElementById("emptyConsolidado");
+  if(rows.length===0){
+    if(gridEl) gridEl.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+  let headerCells = `<div class="row-label-col">Embarque</div>`;
+  days.forEach(d=>{
+    const cls = ["day-head"];
+    if(isWeekend(d)) cls.push("weekend");
+    if(isHoliday(d)) cls.push("holiday");
+    headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
+  });
+  let html = `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};">${headerCells}</div>`;
+  rows.forEach(r=>{
+    let cells = `<div class="row-label-col"><span class="tag-marca ${r.sh.marca}" style="margin-right:6px;font-size:9.5px;padding:2px 6px;">${marcaInitial(r.sh.marca)}</span> ${escapeHtml(r.sh.nombre)}</div>`;
+    for(let i=0;i<colCount;i++){
+      const d = days[i];
+      cells += `<div class="row-track ${isWeekend(d)?'weekend-col':''}" style="grid-column:${i+2}/${i+3};"></div>`;
+    }
+    r.acts.forEach(a=>{
+      const s = a.start < monthStart ? monthStart : a.start;
+      const e = a.end > monthEnd ? monthEnd : a.end;
+      if(e < monthStart || s > monthEnd) return;
+      const startIdx = Math.round((s - monthStart)/86400000) + 2;
+      const endIdx = Math.round((e - monthStart)/86400000) + 3;
+      const isCd = a.key === "ingreso_cd";
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" style="grid-column:${startIdx}/${endIdx}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" title="${a.label} — ${fmtDMY(a.start)}">${isCd ? "CD" : ""}</div>`;
+    });
+    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};margin-bottom:3px;">${cells}</div>`;
+  });
+  if(gridEl) gridEl.innerHTML = html;
+}
+
+function renderInputsTable(){
+  const tbody = document.getElementById("shipmentsTbody");
+  const emptyEl = document.getElementById("emptyShipments");
+  if(!tbody) return;
+  const all = getShipmentsArray();
+  const list = all.filter(s=>shipmentMatchesFilter("inputs", s));
+  document.getElementById("countShipments").textContent = isFilterActive("inputs")
+    ? `${list.length} de ${all.length} embarque(s)` : `${list.length} embarque(s)`;
+  if(list.length===0){
+    tbody.innerHTML = "";
+    if(emptyEl){
+      emptyEl.textContent = all.length===0
+        ? "Aún no hay embarques. Agrega el primero con el formulario de arriba."
+        : "No hay embarques con fecha de instrucción en el mes/año seleccionado.";
+      emptyEl.style.display = "block";
+    }
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+  tbody.innerHTML = list.map(s=>`
+    <tr>
+      <td><span class="pill badge-marca-${s.marca}">${marcaLabel(s.marca)}</span></td>
+      <td><b>${escapeHtml(s.nombre)}</b></td>
+      <td><span class="pill badge-tipo-${s.tipo}">${tipoLabel(s.tipo)}</span></td>
+      <td>${escapeHtml(s.consolidado||"N/A")}</td>
+      <td>${s.fechaInstruccion ? fmtDMY(parseISO(s.fechaInstruccion)) : "—"}</td>
+      <td>${s.fechaArriboDepco ? fmtDMY(parseISO(s.fechaArriboDepco)) : "—"}</td>
+      <td>${s.fechaArriboCD ? fmtDMY(parseISO(s.fechaArriboCD)) : "—"}</td>
+      <td>
+        <button class="btn small" data-action="edit" data-id="${s.id}">✏️ Editar</button>
+        <button class="btn small danger" data-action="delete" data-id="${s.id}">🗑️ Eliminar</button>
+      </td>
+    </tr>
+  `).join("");
+}
+function readForm(){
+  return {
+    marca: document.getElementById("f_marca").value,
+    nombre: document.getElementById("f_nombre").value.trim(),
+    tipo: document.getElementById("f_tipo").value,
+    consolidado: document.getElementById("f_consolidado").value.trim(),
+    fechaInstruccion: document.getElementById("f_finstruccion").value,
+    fechaArriboDepco: document.getElementById("f_farribodepco").value,
+    fechaArriboCD: document.getElementById("f_farribocd").value,
+  };
+}
+function clearForm(){
+  document.getElementById("f_marca").value = "ADIDAS";
+  document.getElementById("f_nombre").value = "";
+  document.getElementById("f_tipo").value = "CONSUMO";
+  document.getElementById("f_consolidado").value = "";
+  document.getElementById("f_finstruccion").value = "";
+  document.getElementById("f_farribodepco").value = "";
+  document.getElementById("f_farribocd").value = "";
+  state.editingId = null;
+  document.getElementById("btnAddShipment").textContent = "+ Agregar embarque";
+  document.getElementById("btnCancelEdit").style.display = "none";
+}
+function fillFormForEdit(s){
+  document.getElementById("f_marca").value = s.marca;
+  document.getElementById("f_nombre").value = s.nombre;
+  document.getElementById("f_tipo").value = s.tipo;
+  document.getElementById("f_consolidado").value = s.consolidado||"";
+  document.getElementById("f_finstruccion").value = s.fechaInstruccion||"";
+  document.getElementById("f_farribodepco").value = s.fechaArriboDepco||"";
+  document.getElementById("f_farribocd").value = s.fechaArriboCD||"";
+  state.editingId = s.id;
+  document.getElementById("btnAddShipment").textContent = "💾 Guardar cambios";
+  document.getElementById("btnCancelEdit").style.display = "inline-flex";
+}
+
+const FILTER_MONTHS = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+const viewFilters = {
+  inputs:        { year: 0, month: 0 },
+  adidas:        { year: 0, month: 0 },
+  reebok:        { year: 0, month: 0 },
+  consolidado:   { year: 0, month: 0 },
+  microprocesos: { year: 0, month: 0 }
+};
+function isFilterActive(viewKey){
+  const f = viewFilters[viewKey];
+  return !!(f && (f.year || f.month));
+}
+function shipmentMatchesFilter(viewKey, sh){
+  const f = viewFilters[viewKey];
+  if(!f || (!f.year && !f.month)) return true;
+  const m = /^(\d{4})-(\d{2})/.exec((sh && sh.fechaInstruccion) || "");
+  if(!m) return false;
+  if(f.year && Number(m[1]) !== f.year) return false;
+  if(f.month && Number(m[2]) !== f.month) return false;
+  return true;
+}
+function getFilterYears(){
+  const set = new Set();
+  Object.values(state.shipmentsMap || {}).forEach(sh=>{
+    const m = /^(\d{4})-/.exec((sh && sh.fechaInstruccion) || "");
+    if(m) set.add(Number(m[1]));
+  });
+  return Array.from(set).sort((a,b)=>a-b);
+}
+function renderFilterBars(){
+  const years = getFilterYears();
+  document.querySelectorAll(".filter-bar").forEach(bar=>{
+    const vk = bar.dataset.view;
+    const f = viewFilters[vk];
+    if(!f) return;
+    if(f.year && !years.includes(f.year)) f.year = 0;
+    const yearBtns = [`<button class="month-btn ${!f.year?'active':''}" data-fkind="year" data-fval="0">TODOS</button>`]
+      .concat(years.map(y=>`<button class="month-btn ${f.year===y?'active':''}" data-fkind="year" data-fval="${y}">${y}</button>`)).join("");
+    const monthBtns = [`<button class="month-btn ${!f.month?'active':''}" data-fkind="month" data-fval="0">TODOS</button>`]
+      .concat(FILTER_MONTHS.map((n,i)=>`<button class="month-btn ${f.month===i+1?'active':''}" data-fkind="month" data-fval="${i+1}">${n}</button>`)).join("");
+    bar.innerHTML = `
+      <div class="filter-row"><span class="filter-label">Año</span>${yearBtns}</div>
+      <div class="filter-row"><span class="filter-label">Mes</span>${monthBtns}</div>`;
+  });
+}
+function applyViewFilter(viewKey){
+  renderFilterBars();
+  if(viewKey === "inputs") renderInputsTable();
+  else if(viewKey === "adidas") renderBrandView("ADIDAS","adidasContainer");
+  else if(viewKey === "reebok") renderBrandView("REEBOK","reebokContainer");
+  else if(viewKey === "consolidado"){
+    const f = viewFilters.consolidado;
+    if(f.month){
+      let y = f.year;
+      if(!y){
+        const ys = getShipmentsArray().map(sh=>/^(\d{4})-(\d{2})/.exec(sh.fechaInstruccion||"")).filter(m=>m && Number(m[2])===f.month).map(m=>Number(m[1]));
+        y = ys.length ? Math.max(...ys) : 0;
+      }
+      if(y){
+        populateMonthPicker();
+        const picker = document.getElementById("monthPicker");
+        const val = `${y}-${String(f.month).padStart(2,"0")}`;
+        if(picker && Array.from(picker.options).some(o=>o.value===val)) picker.value = val;
+      }
+    }
+    renderConsolidated();
+  }
+  else if(viewKey === "microprocesos"){ renderMicroShipmentOptions(); renderMicroprocesos(); }
+  checkAllAlerts();
+}
+document.addEventListener("click",(e)=>{
+  const btn = e.target.closest(".filter-bar .month-btn");
+  if(!btn) return;
+  const vk = btn.closest(".filter-bar").dataset.view;
+  const f = viewFilters[vk];
+  if(!f) return;
+  const val = Number(btn.dataset.fval);
+  if(btn.dataset.fkind === "year") f.year = val;
+  else f.month = (f.month === val) ? 0 : val;
+  applyViewFilter(vk);
+});
+function renderAll(){
+  renderFilterBars();
+  renderInputsTable();
+  renderBrandView("ADIDAS","adidasContainer");
+  renderBrandView("REEBOK","reebokContainer");
+  renderConsolidated();
+  ensureTasksForAllShipments();
+  renderMicroShipmentOptions();
+  renderMicroprocesos();
+  renderResumen();
+  checkAllAlerts();
+}
+function showToast(msg, kind){
+  let t = document.getElementById("toastMsg");
+  if(!t){
+    t = document.createElement("div");
+    t.id = "toastMsg";
+    t.style.cssText = "position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.2);transition:opacity .3s;";
+    document.body.appendChild(t);
+  }
+  t.style.background = kind==="error" ? "#C00000" : "#385623";
+  t.style.color = "#fff";
+  t.textContent = msg;
+  t.style.opacity = "1";
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>{ t.style.opacity="0"; }, 2200);
+}
+
+function pushAllToFirebase(){
+  if(!cloudMode || !shipmentsRef) return;
+  shipmentsRef.set(state.shipmentsMap);
+  holidaysRef.set(state.holidays);
+  const microObj = {};
+  microState.items.forEach(it=>{ if(it && it.id) microObj[it.id] = cleanTaskItem(it); });
+  microRef.set(microObj);
+  resumenRef.set(resumenState.months);
+  showToast("🔄 Datos locales subidos exitosamente a Firebase");
+}
+
+function saveShipment(id, data){
+  state.shipmentsMap[id] = data;
+  saveLocalBackup();
+  if(cloudMode && shipmentsRef){
+    shipmentsRef.child(id).set(data).catch(e=>console.warn(e));
+  }
+  renderAll();
+}
+
+function deleteShipment(id){
+  const delIds = microState.items.filter(it=> it.shipmentId === id).map(it=>it.id);
+  microState.items = microState.items.filter(it=> it.shipmentId !== id);
+  delete state.shipmentsMap[id];
+  saveLocalBackup();
+  microDeleteItems(delIds);
+  if(cloudMode && shipmentsRef){
+    shipmentsRef.child(id).remove().catch(e=>console.warn(e));
+  }
+  renderAll();
+}
+
+function saveHolidays(list){
+  state.holidays = list;
+  saveLocalBackup();
+  if(cloudMode && holidaysRef){
+    holidaysRef.set(list).catch(e=>console.warn(e));
+  }
+  renderAll();
+}
+
+document.getElementById("btnAddShipment").addEventListener("click", ()=>{
+  const data = readForm();
+  if(!data.nombre){ alert("Ingresa el nombre del embarque."); return; }
+  if(!data.fechaInstruccion){ alert("Ingresa la fecha de instrucción de producto."); return; }
+  const id = state.editingId || generateId();
+  if(state.editingId && state.shipmentsMap[id] && state.shipmentsMap[id].customDates){
+    data.customDates = state.shipmentsMap[id].customDates;
+  }
+  saveShipment(id, data);
+  clearForm();
+});
+document.getElementById("btnCancelEdit").addEventListener("click", clearForm);
+document.getElementById("shipmentsTbody").addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-action]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.action==="delete"){
+    if(confirm("¿Eliminar este embarque? Se reflejará para todos los usuarios.")){
+      deleteShipment(id);
+    }
+  } else if(btn.dataset.action==="edit"){
+    const s = state.shipmentsMap[id];
+    if(s){ fillFormForEdit({...s,id}); window.scrollTo({top:0,behavior:"smooth"}); }
+  }
+});
+document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
+  const raw = document.getElementById("holidaysBox").value;
+  const lines = raw.split("\n").map(l=>l.trim()).filter(Boolean);
+  const valid = lines.filter(l=>/^\d{4}-\d{2}-\d{2}$/.test(l));
+  saveHolidays(valid);
+});
+document.getElementById("btnSyncCloud").addEventListener("click", pushAllToFirebase);
+
+/* ---------- EXPORTAR / IMPORTAR JSON ---------- */
+document.getElementById("btnExport").addEventListener("click", ()=>{
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+    shipmentsMap: state.shipmentsMap,
+    holidays: state.holidays,
+    microItems: microState.items,
+    resumenMonths: resumenState.months
+  }, null, 2));
+  const a = document.createElement('a');
+  a.setAttribute("href", dataStr);
+  a.setAttribute("download", `Respaldo_Medeport_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+document.getElementById("btnImport").addEventListener("click", ()=> document.getElementById("fileImport").click());
+document.getElementById("fileImport").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (event)=>{
+    try{
+      const imported = JSON.parse(event.target.result);
+      if(imported.shipmentsMap) state.shipmentsMap = imported.shipmentsMap;
+      if(imported.holidays) state.holidays = imported.holidays;
+      if(imported.microItems) microState.items = imported.microItems;
+      if(imported.resumenMonths) resumenState.months = imported.resumenMonths;
+      saveLocalBackup();
+      pushAllToFirebase();
+      renderAll();
+      showToast("✅ Copia de seguridad importada exitosamente");
+    }catch(err){
+      alert("El archivo JSON no es válido.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("view-"+tab.dataset.view).classList.add("active");
+    if(tab.dataset.view==="adidas") renderBrandView("ADIDAS","adidasContainer");
+    if(tab.dataset.view==="reebok") renderBrandView("REEBOK","reebokContainer");
+    if(tab.dataset.view==="consolidado") renderConsolidated();
+    if(tab.dataset.view==="microprocesos") renderMicroprocesos();
+    if(tab.dataset.view==="resumen") renderResumen();
+    checkAllAlerts();
+  });
+});
+document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
+document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+
+/* =========================================================
+   MICROPROCESOS (CON COLORES DINÁMICOS POR ESTADO)
+========================================================= */
+const TASK_TEMPLATES = {
+  "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
+  "DEPCO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos para creación de OC"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC (LPN) a producto"}, {"ord": 14, "act": "Subir a EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 16, "act": "*Envío del pedido a COMEX"}, {"ord": 17, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 18, "act": "*Ingresos MAYORISTA"}, {"ord": 19, "act": "*Elaboración archivos Intercomapny"}, {"ord": 20, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 21, "act": "*Carga precio PVP"}, {"ord": 22, "act": "*Carga precio Intercompany"}, {"ord": 23, "act": "*Carga precio Mayor"}, {"ord": 24, "act": "*Carga precio MARKETING"}, {"ord": 25, "act": "Respuesta de distribución de tiendas"}, {"ord": 26, "act": "Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"}, {"ord": 27, "act": "Elaboración Plantilla OCA"}, {"ord": 28, "act": "Crear y liberar OCA"}, {"ord": 29, "act": "Elaboración Plantilla OCI"}, {"ord": 30, "act": "Crear números OCI en SAP"}, {"ord": 31, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 32, "act": "Enviar números OCIS a COMEX"}, {"ord": 33, "act": "Respuesta comex: \"Se encuentra cargado en SAP los embarques\""}, {"ord": 34, "act": "Enviar LPN Embarque"}, {"ord": 35, "act": "Elaboración Plantilla para OTN (consolidado)"}, {"ord": 36, "act": "Elaboración Plantilla OTN"}, {"ord": 37, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 38, "act": "Crear número de OTN"}, {"ord": 39, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 40, "act": "Enviar número de OTN a COMEX"}, {"ord": 41, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 42, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 43, "act": "Aprobación diferencia por finanzas"}, {"ord": 44, "act": "Crear números de traslados en SAP"}, {"ord": 45, "act": "Enviar números de traslados a CD por correo"}, {"ord": 46, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 47, "act": "Solicitar plantilla Microsite"}, {"ord": 48, "act": "Llena plantilla Microsite"}, {"ord": 49, "act": "Cargar plantilla Microsite por DM"}, {"ord": 50, "act": "LPN Consolidado"}],
+  "CONSOLIDADO_OTN": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 3, "act": "*Envío de pedido a comex"}, {"ord": 4, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 5, "act": "*Ingresos MAYORISTA"}, {"ord": 6, "act": "*Elaboración archivos Intercomapny"}, {"ord": 7, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 8, "act": "*Carga precio PVP"}, {"ord": 9, "act": "*Carga precio Intercompany"}, {"ord": 10, "act": "*Carga precio Mayor"}, {"ord": 11, "act": "*Carga precio MKT"}, {"ord": 12, "act": "Respuesta de distribución de tiendas"}, {"ord": 13, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 14, "act": "Elaboración Plantilla OTN"}, {"ord": 15, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 16, "act": "Crear número de OTN"}, {"ord": 17, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 18, "act": "Enviar número de OTN a COMEX"}, {"ord": 19, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 20, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 21, "act": "Aprobación diferencia por finanzas"}, {"ord": 22, "act": "Crear números de traslados en SAP"}, {"ord": 23, "act": "Enviar números de traslados a CD por correo"}, {"ord": 24, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 25, "act": "Solicitar plantilla Microsite"}, {"ord": 26, "act": "Llena plantilla Microsite"}, {"ord": 27, "act": "Cargar plantilla Microsite por DM"}, {"ord": 28, "act": "LPN"}],
+  "INTERCOMPANY": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar Archivos Intercompany:"}, {"ord": 3, "act": "*Carga precio PVP"}, {"ord": 4, "act": "*Carga precio Intercompany"}, {"ord": 5, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 6, "act": "Solicitar plantilla Microsite"}, {"ord": 7, "act": "Llena plantilla Microsite"}, {"ord": 8, "act": "Cargar plantilla Microsite por DM"}, {"ord": 9, "act": "Catalogar"}]
+};
+const INTERCOMPANY_KEY = "__INTERCOMPANY__";
+const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
+let microLoaded = false;
+let shipmentsLoaded = false;
+
+function cleanTaskItem(item) {
+  const clean = { ...item };
+  Object.keys(clean).forEach(key => {
+    if (clean[key] === undefined || clean[key] === "") {
+      clean[key] = null;
+    }
+  });
+  return clean;
+}
+
+function microPersist(updates){
+  saveLocalBackup();
+  if(!(cloudMode && microRef)) return;
+  microRef.update(updates).catch(err=> console.warn("Modo local guardado:", err));
+}
+function microSaveItem(item){
+  if(item) microPersist({ [item.id]: cleanTaskItem(item) });
+}
+function microSaveField(id, field, value){
+  microPersist({ [id + "/" + field]: (value === "" || value === undefined) ? null : value });
+}
+function microDeleteItems(ids){
+  const u = {};
+  ids.forEach(id=>{ u[id] = null; });
+  if(Object.keys(u).length) microPersist(u);
+}
+function trackModeFor(tipo, marca){
+  if(tipo !== "CONSUMO") return "SINGLE";
+  if(marca === "ADI_RBK") return "DUAL";
+  if(marca === "REEBOK") return "REEBOK_ONLY";
+  return "ADIDAS_ONLY";
+}
+function blankTaskFields(trackMode){
+  if(trackMode === "DUAL") return {adidas_status:"", adidas_fecha:"", adidas_obs:"", reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  if(trackMode === "ADIDAS_ONLY") return {adidas_status:"", adidas_fecha:"", adidas_obs:""};
+  if(trackMode === "REEBOK_ONLY") return {reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  return {status:"", fecha:"", obs:""};
+}
+function generateTasksForShipment(shipment){
+  const template = TASK_TEMPLATES[shipment.tipo] || [];
+  const trackMode = trackModeFor(shipment.tipo, shipment.marca);
+  return template.map(t=>({
+    id: ("t_" + shipment.id + "_" + t.ord).replace(/[.#$\[\]\/]/g,"_"), shipmentId: shipment.id, proc: shipment.tipo, trackMode,
+    ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
+  }));
+}
+function microCreateIfMissing(tasks){
+  // Crea cada tarea en Firebase SOLO si ese nodo todavía no existe (nunca pisa estados guardados)
+  if(!(cloudMode && microRef)) return;
+  tasks.forEach(t=>{
+    if(!t || !t.id) return;
+    microRef.child(t.id).transaction(
+      (current)=> (current === null ? cleanTaskItem(t) : undefined)
+    ).catch(err=> console.warn("No se pudo crear tarea:", t.id, err));
+  });
+}
+function ensureTasksForAllShipments(){
+  // En modo nube, no generar tareas hasta haber recibido embarques Y microprocesos desde Firebase.
+  // Antes se generaban tareas en blanco con datos locales/vacíos y se escribían encima de las completadas.
+  if(cloudMode && !(microLoaded && shipmentsLoaded)) return;
+  const existingIds = new Set(microState.items.map(it=>it.id));
+  const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
+  const created = [];
+  Object.keys(state.shipmentsMap).forEach(id=>{
+    if(existingShipmentIds.has(id)) return;
+    const sh = {...state.shipmentsMap[id], id};
+    if(!sh.tipo || !TASK_TEMPLATES[sh.tipo]) return;
+    generateTasksForShipment(sh).forEach(t=>{
+      if(existingIds.has(t.id)) return;
+      microState.items.push(t);
+      created.push(t);
+    });
+  });
+  if(created.length){
+    saveLocalBackup();
+    microCreateIfMissing(created);
+  }
+}
+function normStatus(v){
+  if(v === "COMPLETO" || v === "N/A") return v;
+  return "PENDIENTE";
+}
+function isItemComplete(item){
+  if(item.trackMode === "DUAL") return (item.adidas_status==="COMPLETO" || item.adidas_status==="N/A") && (item.reebok_status==="COMPLETO" || item.reebok_status==="N/A");
+  if(item.trackMode === "ADIDAS_ONLY") return item.adidas_status==="COMPLETO" || item.adidas_status==="N/A";
+  if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO" || item.reebok_status==="N/A";
+  return item.status === "COMPLETO" || item.status === "N/A";
+}
+function renderMicroShipmentOptions(){
+  const sel = document.getElementById("microShipmentSelect");
+  if(!sel) return;
+  const prev = microState.selectedKey;
+  const list = getShipmentsArray().filter(s=> TASK_TEMPLATES[s.tipo] && shipmentMatchesFilter("microprocesos", s)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  let html = `<option value="${INTERCOMPANY_KEY}">🔗 Intercompany (general)</option>`;
+  html += list.map(s=> `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}</option>`).join("");
+  sel.innerHTML = html;
+  if(prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) sel.value = prev;
+  else sel.value = (isFilterActive("microprocesos") && list.length) ? list[0].id : INTERCOMPANY_KEY;
+  microState.selectedKey = sel.value;
+}
+function currentSelectionItems(){
+  if(microState.selectedKey === INTERCOMPANY_KEY){
+    return microState.items.filter(it=> it.proc==="INTERCOMPANY" && !it.shipmentId);
+  }
+  return microState.items.filter(it=> it.shipmentId === microState.selectedKey);
+}
+function renderMicroThead(trackMode){
+  const thead = document.getElementById("microThead");
+  if(!thead) return;
+  if(trackMode === "DUAL"){
+    thead.innerHTML = `<tr><th rowspan="2">Orden</th><th rowspan="2">Actividad</th><th colspan="3" class="brand-col-head ADIDAS">ADIDAS</th><th colspan="3" class="brand-col-head REEBOK">REEBOK</th><th rowspan="2">Acciones</th></tr><tr><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th></tr>`;
+  } else if(trackMode === "ADIDAS_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th>Acciones</th></tr>`;
+  } else if(trackMode === "REEBOK_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th><th>Acciones</th></tr>`;
+  } else {
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th>Status</th><th>Fecha</th><th>Obs</th><th>Acciones</th></tr>`;
+  }
+}
+
+function getStatusClass(value){
+  if(value === "COMPLETO") return "status-completo";
+  if(value === "N/A") return "status-na";
+  return "status-pendiente";
+}
+
+function statusSelectHtml(id, field, value){
+  const v = value || "";
+  const cls = getStatusClass(v);
+  return `<select class="inline-status ${cls}" data-id="${id}" data-field="${field}"><option value="" ${v===""?"selected":""}>PENDIENTE</option><option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option><option value="N/A" ${v==="N/A"?"selected":""}>N/A</option></select>`;
+}
+function dateInputHtml(id, field, value){
+  const v = /^\d{4}-\d{2}-\d{2}$/.test(value||"") ? value : "";
+  return `<input type="date" class="inline-fecha" data-id="${id}" data-field="${field}" value="${v}">`;
+}
+function obsInputHtml(id, field, value){
+  return `<input type="text" class="inline-obs" data-id="${id}" data-field="${field}" value="${escapeHtml(value||"")}">`;
+}
+function renderMicroprocesos(){
+  const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
+  const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
+  let items = currentSelectionItems();
+  const trackMode = items.length>0 ? items[0].trackMode : (sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE");
+  renderMicroThead(trackMode);
+  const term = microState.search.trim().toLowerCase();
+  const filtered = items.filter(it=>{
+    if(microState.statusFilter !== "TODOS"){
+      const statuses = trackMode==="DUAL" ? [it.adidas_status, it.reebok_status] : trackMode==="ADIDAS_ONLY" ? [it.adidas_status] : trackMode==="REEBOK_ONLY" ? [it.reebok_status] : [it.status];
+      if(!statuses.some(s=> normStatus(s)===microState.statusFilter)) return false;
+    }
+    if(term){
+      const haystack = [it.act, it.obs, it.adidas_obs, it.reebok_obs].filter(Boolean).join(" ").toLowerCase();
+      if(haystack.indexOf(term) === -1) return false;
+    }
+    return true;
+  }).sort((a,b)=> (Number(a.ord)||0) - (Number(b.ord)||0));
+  
+  const tbody = document.getElementById("microTbody");
+  const emptyEl = document.getElementById("emptyMicro");
+  if(!tbody) return;
+  
+  document.getElementById("microCount").textContent = filtered.length;
+  document.getElementById("microDoneCount").textContent = filtered.filter(isItemComplete).length;
+  
+  if(filtered.length===0){
+    tbody.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+  tbody.innerHTML = filtered.map(it=>{
+    const orderCell = `<td><b>${escapeHtml(String(it.ord!=null?it.ord:""))}</b></td><td class="wrap">${escapeHtml(it.act||"")}</td>`;
+    const actionsCell = `<td style="white-space:nowrap;"><button class="btn small" data-maction="edit" data-id="${it.id}">✏️</button><button class="btn small danger" data-maction="delete" data-id="${it.id}">🗑️</button></td>`;
+    if(trackMode === "DUAL"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td><td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+    }
+    if(trackMode === "ADIDAS_ONLY"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>${actionsCell}</tr>`;
+    }
+    if(trackMode === "REEBOK_ONLY"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+    }
+    return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
+  }).join("");
+}
+
+document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
+document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
+document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
+
+document.getElementById("microTbody").addEventListener("change", (e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
+  const itemId = el.dataset.id;
+  const field = el.dataset.field;
+  const item = microState.items.find(it=>it.id===itemId);
+  if(item){
+    item[field] = el.value || null;
+    if(el.classList.contains("inline-status")){
+      el.className = "inline-status " + getStatusClass(el.value);
+    }
+    microSaveField(itemId, field, item[field]);
+    checkAllAlerts();
+    showToast("✅ Cambio guardado");
+  }
+});
+
+document.getElementById("microTbody").addEventListener("blur", (e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-obs")) return;
+  const itemId = el.dataset.id;
+  const field = el.dataset.field;
+  const item = microState.items.find(it=>it.id===itemId);
+  if(item){
+    item[field] = el.value.trim() || null;
+    microSaveField(itemId, field, item[field]);
+    showToast("✅ Observación guardada");
+  }
+}, true);
+
+document.getElementById("microTbody").addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-maction]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.maction==="delete"){
+    if(confirm("¿Eliminar esta actividad?")){
+      microState.items = microState.items.filter(it=>it.id!==id);
+      microDeleteItems([id]);
+      renderMicroprocesos();
+      checkAllAlerts();
+      showToast("🗑️ Actividad eliminada");
+    }
+  } else if(btn.dataset.maction==="edit"){
+    const item = microState.items.find(it=>it.id===id);
+    if(item) openMicroModal(item);
+  }
+});
+
+function openMicroModal(item){
+  microState.editingId = item ? item.id : null;
+  document.getElementById("microModalTitle").textContent = item ? "✏️ Editar Actividad" : "+ Agregar Actividad";
+  document.getElementById("m_ord").value = item && item.ord!=null ? item.ord : "";
+  document.getElementById("m_act").value = item ? (item.act||"") : "";
+  const trackMode = item ? item.trackMode : "SINGLE";
+  document.getElementById("m_singleTrackWrap").style.display = trackMode==="SINGLE" ? "block" : "none";
+  document.getElementById("m_adidasWrap").style.display = (trackMode==="DUAL"||trackMode==="ADIDAS_ONLY") ? "block" : "none";
+  document.getElementById("m_reebokWrap").style.display = (trackMode==="DUAL"||trackMode==="REEBOK_ONLY") ? "block" : "none";
+  document.getElementById("microModal").classList.add("open");
+}
+function closeMicroModal(){ document.getElementById("microModal").classList.remove("open"); microState.editingId = null; }
+document.getElementById("btnAddMicro").addEventListener("click", ()=> openMicroModal(null));
+document.getElementById("btnMicroCancel").addEventListener("click", closeMicroModal);
+document.getElementById("btnMicroSave").addEventListener("click", ()=>{
+  const act = document.getElementById("m_act").value.trim();
+  if(!act){ alert("Ingresa la actividad."); return; }
+  const ordRaw = document.getElementById("m_ord").value;
+  const data = {
+    proc: microState.selectedKey===INTERCOMPANY_KEY ? "INTERCOMPANY" : (state.shipmentsMap[microState.selectedKey]||{}).tipo,
+    shipmentId: microState.selectedKey===INTERCOMPANY_KEY ? null : microState.selectedKey,
+    trackMode: "SINGLE",
+    ord: ordRaw === "" ? null : Number(ordRaw),
+    act,
+    status: document.getElementById("m_status").value || null,
+    fecha: document.getElementById("m_fecha").value || null,
+    obs: document.getElementById("m_obs").value.trim() || null
+  };
+  let saved;
+  if(microState.editingId){
+    const idx = microState.items.findIndex(it=>it.id===microState.editingId);
+    if(idx>-1){
+      saved = {id: microState.editingId, ...data};
+      microState.items[idx] = {...microState.items[idx], ...saved};
+      saved = microState.items[idx];
+    }
+  } else {
+    saved = {id: generateId(), ...data};
+    microState.items.push(saved);
+  }
+  microSaveItem(saved);
+  closeMicroModal();
+  renderMicroprocesos();
+  checkAllAlerts();
+  showToast("✅ Actividad guardada");
+});
+
+/* =========================================================
+   HOJA DE RESÚMENES
+========================================================= */
+const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+const CHANNEL_COLUMNS = [
+  "MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP",
+  "EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA",
+  "TRANS-EMELEC","TRANS","DEPSI","DEPCO"
+];
+const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
+const GRUPOS = ["Calzado","Ropa","Accesorios"];
+function normTxt(s){
+  if(s === null || s === undefined) return "";
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+}
+const CHANNEL_ALIAS_MAP = (function(){
+  const raw = {
+    "MARATHON": ["MARATHON", "MARATHON SPORTS", "MARATHONSPORTS"],
+    "TAF": ["TAF"],
+    "BIG HEAD": ["BIG HEAD", "BIGHEAD", "BIG-HEAD"],
+    "OUTLET": ["OUTLET", "OUTLETS"],
+    "SNEAKERS": ["SNEAKERS", "SNEAKER"],
+    "WEB": ["WEB", "PAGINA WEB", "ECOMMERCE", "E-COMMERCE", "E COMMERCE", "INTERNET"],
+    "TELESHOP": ["TELESHOP", "TELE SHOP"],
+    "EXPLORER": ["EXPLORER"],
+    "SPOMA": ["SPOMA"],
+    "TIENDAS": ["TIENDAS", "TIENDA"],
+    "MARKETING": ["MARKETING", "MKT"],
+    "MAYORISTA": ["MAYORISTA", "MAYORISTAS"],
+    "KAO": ["KAO"],
+    "EDCA": ["EDCA"],
+    "TRANS-EMELEC": ["TRANS-EMELEC", "TRANS EMELEC", "TRANSEMELEC"],
+    "TRANS": ["TRANS", "TRASLADO", "TRASLADOS"],
+    "DEPSI": ["DEPSI"],
+    "DEPCO": ["DEPCO", "BODEGA DEPCO", "DEPCO QUITO", "DEPCO GYE", "STOCK DEPCO", "DEPOSITO COMERCIAL", "DEPÓSITO COMERCIAL"]
+  };
+  const map = {};
+  Object.keys(raw).forEach(canon => {
+    raw[canon].forEach(alias => map[normTxt(alias)] = canon);
+  });
+  return map;
+})();
+function resolveChannel(raw, allowedList){
+  const key = normTxt(raw);
+  if(!key) return null;
+  if(key.includes("DEPCO")) {
+    if(!allowedList || allowedList.includes("DEPCO")) return "DEPCO";
+  }
+  let canon = CHANNEL_ALIAS_MAP[key];
+  if(!canon){
+    for(const alias in CHANNEL_ALIAS_MAP){
+      if(key === alias || key.includes(alias)){
+        canon = CHANNEL_ALIAS_MAP[alias];
+        break;
+      }
+    }
+  }
+  if(!canon) return null;
+  if(allowedList && !allowedList.includes(canon)) return null;
+  return canon;
+}
+function resolveGrupo(raw){
+  const key = normTxt(raw);
+  if(key === "C" || key.startsWith("CALZ") || key.startsWith("FOOTW")) return "Calzado";
+  if(key === "R" || key.startsWith("ROP") || key.startsWith("TEXT") || key.startsWith("APPAR")) return "Ropa";
+  if(key === "A" || key.startsWith("ACC") || key.startsWith("HARDW") || key.startsWith("EQUIP")) return "Accesorios";
+  return null;
+}
+function resolveMarca(raw){
+  const key = normTxt(raw);
+  if(key === "2" || key === "002" || key.includes("ADIDAS")) return "ADIDAS";
+  if(key === "1" || key === "004" || key.includes("REEBOK")) return "REEBOK";
+  return key || "ADIDAS";
+}
+function blankChannels(){
+  const o = {};
+  CHANNEL_COLUMNS.forEach(c => o[c] = 0);
+  return o;
+}
+const resumenState = { mes: "JULIO", months: {} };
+RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
+
+function resumenSave(){
+  saveLocalBackup();
+  if(cloudMode && resumenRef){
+    resumenRef.set(resumenState.months).catch(e=>console.warn(e));
+  }
+}
+function findShipmentInfo(nombreEmbarque){
+  const target = normTxt(nombreEmbarque);
+  if(!target) return null;
+  const list = getShipmentsArray();
+  return list.find(s => {
+    const sName = normTxt(s.nombre);
+    return sName === target || target.includes(sName) || sName.includes(target);
+  });
+}
+function rowKey(block, embarque, marca, grupo){
+  return block + "||" + normTxt(embarque) + "||" + normTxt(marca) + "||" + grupo;
+}
+function ensureRow(mes, block, embarque, marca, grupo, meta){
+  if(!Array.isArray(resumenState.months[mes])) resumenState.months[mes] = [];
+  const list = resumenState.months[mes];
+  const key = rowKey(block, embarque, marca, grupo);
+  let row = list.find(r => rowKey(r.block, r.embarque, r.marca, r.grupo) === key);
+  if(!row){
+    row = {
+      id: generateId(),
+      block,
+      mes,
+      embarque,
+      marca,
+      grupo,
+      tipoImportacion: (meta && meta.tipoImportacion) || "",
+      fechaArriboDepco: (meta && meta.fechaArriboDepco) || "",
+      consolidado: (meta && meta.consolidado) || "",
+      fechaArriboCD: (meta && meta.fechaArriboCD) || "",
+      channels: blankChannels(),
+      observaciones: ""
+    };
+    list.push(row);
+  }
+  return row;
+}
+function ensureTriadRows(mes, block, embarque, marca, meta){
+  GRUPOS.forEach(g => ensureRow(mes, block, embarque, marca, g, meta));
+}
+function findHeaderRow(aoa, requiredAliases){
+  const maxScan = Math.min(aoa.length, 30);
+  for(let r = 0; r < maxScan; r++){
+    const row = aoa[r] || [];
+    const normRow = row.map(normTxt);
+    const matched = requiredAliases.every(aliasGroup => {
+      return aliasGroup.some(alias => normRow.some(col => col.includes(alias)));
+    });
+    if(matched){
+      const colMap = {};
+      normRow.forEach((val, idx) => {
+        if(val && colMap[val] === undefined) colMap[val] = idx;
+      });
+      return { rowIndex: r, colMap, rawRow: normRow };
+    }
+  }
+  return null;
+}
+function getColIdx(colMap, aliases){
+  for(const alias of aliases){
+    for(const key in colMap){
+      if(key === alias || key.includes(alias)) return colMap[key];
+    }
+  }
+  return undefined;
+}
+function cellStr(row, idx){
+  return (idx === undefined || idx === null || row[idx] === undefined || row[idx] === null) ? "" : String(row[idx]).trim();
+}
+function cellNum(row, idx){
+  if(idx === undefined || idx === null || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
+  const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+function tryParseFormatA(aoa, mes, log){
+  const header = findHeaderRow(aoa, [["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"], ["CANTIDAD", "QTY", "UNIDADES"]]);
+  if(!header) return false;
+  const { rowIndex, colMap } = header;
+  const embCol = getColIdx(colMap, ["EMBARQUE"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
+  let count = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const embarque = cellStr(row, embCol);
+    if(!embarque) continue;
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const canal = resolveChannel(cellStr(row, cnlCol), null);
+    const cantidad = cellNum(row, qtyCol);
+    if(!marca || !grupo || cantidad === 0) continue;
+    ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
+    const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
+    if(canal){
+      targetRow.channels[canal] = (targetRow.channels[canal] || 0) + cantidad;
+    }
+    count++;
+  }
+  log.push({ type: "ok", msg: `OC Consolidada: ${count} registros procesados.` });
+  return true;
+}
+function tryParseFormatB(aoa, mes, log){
+  const header = findHeaderRow(aoa, [["INSTRUCCION"], ["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"]]);
+  if(!header) return false;
+  const { rowIndex, colMap } = header;
+  const instCol = getColIdx(colMap, ["INSTRUCCION"]);
+  const embCol = getColIdx(colMap, ["EMBARQUE"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["LPN DETAIL SIZE VALUE", "CANTIDAD", "QTY", "UNIDADES"]);
+  let count = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const instruccion = normTxt(cellStr(row, instCol));
+    if(instruccion && !instruccion.includes("IMPORTAR")) continue;
+    const embarque = cellStr(row, embCol);
+    if(!embarque) continue;
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const canal = resolveChannel(cellStr(row, cnlCol), null);
+    const cantidad = cellNum(row, qtyCol);
+    if(!marca || !grupo || cantidad === 0) continue;
+    ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
+    const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
+    if(canal){
+      targetRow.channels[canal] = (targetRow.channels[canal] || 0) + cantidad;
+    }
+    count++;
+  }
+  log.push({ type: "ok", msg: `OC LPN Consolidado: ${count} registros procesados.` });
+  return true;
+}
+const INTERCOMPANY_BODEGAS = ["TRANS","DEPSI","DEPCO"];
+function tryParseFormatC(aoa, mes, log){
+  const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"]]);
+  if(!header) return false;
+  const { rowIndex, colMap, rawRow } = header;
+  const interCol = getColIdx(colMap, ["INTERCOMPANY"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD", "CANT", "QTY", "UNIDADES", "UNID", "PIEZAS", "TOTAL"]);
+  const bodCol = getColIdx(colMap, ["BODEGA", "ALMACEN", "ORIGEN"]);
+  let cncCol = undefined;
+  for(const alias of ["CONCEPTO", "CANAL", "DESTINO"]){
+    for(const key in colMap){
+      if((key === alias || key.includes(alias)) && colMap[key] !== bodCol){ cncCol = colMap[key]; break; }
+    }
+    if(cncCol !== undefined) break;
+  }
+  const dosColumnas = (bodCol !== undefined && cncCol !== undefined);
+  const soloCol = dosColumnas ? undefined : getColIdx(colMap, ["CONCEPTO", "BODEGA", "CANAL", "DESTINO"]);
+  let count = 0, leidas = 0, sinBodega = 0, sinConcepto = 0, sinCantidad = 0, sinGrupo = 0;
+  const conceptosNoRec = {}, gruposNoRec = {};
+  let ultimoInter = "";
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const celdaInter = cellStr(row, interCol);
+    if(celdaInter) ultimoInter = celdaInter;
+    const hayDatos = cellStr(row, grpCol) || cellStr(row, mrcCol) || cellNum(row, qtyCol);
+    if(!hayDatos) continue;
+    const intercompany = celdaInter || ultimoInter;
+    if(!intercompany) continue;
+    leidas++;
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const cantidad = cellNum(row, qtyCol);
+    if(cantidad === 0){ sinCantidad++; continue; }
+    if(!marca || !grupo){
+      sinGrupo++;
+      const k = cellStr(row, grpCol) || "(vacío)";
+      gruposNoRec[k] = (gruposNoRec[k] || 0) + 1;
+      continue;
+    }
+    let bodega = null, concepto = null;
+    if(dosColumnas){
+      bodega   = resolveChannel(cellStr(row, bodCol), INTERCOMPANY_BODEGAS);
+      concepto = resolveChannel(cellStr(row, cncCol), INTERCOMPANY_CHANNELS);
+      if(!concepto){
+        sinConcepto++;
+        const k = cellStr(row, cncCol) || "(vacío)";
+        conceptosNoRec[k] = (conceptosNoRec[k] || 0) + 1;
+        continue;
+      }
+      if(!bodega) sinBodega++;
+    } else {
+      concepto = resolveChannel(cellStr(row, soloCol), INTERCOMPANY_CHANNELS);
+    }
+    ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
+    const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
+    if(bodega){
+      targetRow.channels[bodega] = (targetRow.channels[bodega] || 0) - cantidad;
+    }
+    if(concepto){
+      targetRow.channels[concepto] = (targetRow.channels[concepto] || 0) + cantidad;
+    }
+    count++;
+  }
+  const lista = (o) => Object.keys(o).slice(0,6).join(", ");
+  const colName = (idx) => idx === undefined ? "NO ENCONTRADA" : `"${rawRow[idx]}" (col ${idx+1})`;
+  let msg = `Intercompany: ${count} de ${leidas} filas procesadas` + (dosColumnas ? " (resta de Bodega y suma al Concepto/Canal)." : ".");
+  if(sinCantidad) msg += ` ${sinCantidad} sin cantidad.`;
+  if(sinGrupo) msg += ` ${sinGrupo} con grupo no válido (${lista(gruposNoRec)}).`;
+  if(sinConcepto) msg += ` ${sinConcepto} con concepto no reconocido (${lista(conceptosNoRec)}).`;
+  if(sinBodega) msg += ` ${sinBodega} sin bodega reconocida: solo se sumó al concepto.`;
+  if(count === 0 || sinConcepto || sinGrupo){
+    msg += ` Columnas detectadas → INTERCOMPANY: ${colName(interCol)}; MARCA: ${colName(mrcCol)}; GRUPO: ${colName(grpCol)}; CANTIDAD: ${colName(qtyCol)}; BODEGA: ${colName(dosColumnas ? bodCol : undefined)}; CONCEPTO: ${colName(dosColumnas ? cncCol : soloCol)}.`;
+  }
+  log.push({ type: (count === 0 || sinConcepto || sinGrupo) ? "err" : "ok", msg });
+  return true;
+}
+
+const QUICK_BLOCK = "BASE QUICK";
+const QUICK_CHANNELS = ["TRANS","DEPSI","DEPCO"];
+const MESES_CALENDARIO = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+function quickTitleForMonth(mes){
+  const idx = MESES_CALENDARIO.indexOf(normTxt(mes));
+  const prev = idx === -1 ? normTxt(mes) : MESES_CALENDARIO[(idx + 11) % 12];
+  return `BASE QUICK ACTUALIZADA CON CIERRE A ${prev}`;
+}
+function tryParseBaseQuick(aoa, mes, log, ctx){
+  const header = findHeaderRow(aoa, [
+    ["MARCA"],
+    ["GRUPO"],
+    ["CONCEPTO ALMACEN","ALMACEN","BODEGA","CONCEPTO"],
+    ["CANTIDAD STOCK","CANTIDAD","STOCK","QTY"]
+  ]);
+  if(!header) return false;
+  const { rowIndex, colMap } = header;
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const almCol = getColIdx(colMap, ["CONCEPTO ALMACEN","ALMACEN","BODEGA","CONCEPTO"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD STOCK","CANTIDAD","STOCK","QTY"]);
+  if(mrcCol===undefined || grpCol===undefined || almCol===undefined || qtyCol===undefined) return false;
+  const acc = {};
+  const marcasVistas = [];
+  const ignoradosAlm = {};
+  let count = 0, ignoradas = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const marcaRaw = cellStr(row, mrcCol);
+    const grupoRaw = cellStr(row, grpCol);
+    const almRaw   = cellStr(row, almCol);
+    if(!marcaRaw && !grupoRaw && !almRaw) continue;
+    const marca = resolveMarca(marcaRaw);
+    const grupo = resolveGrupo(grupoRaw);
+    const canal = resolveChannel(almRaw, QUICK_CHANNELS);
+    const cantidad = cellNum(row, qtyCol);
+    if(cantidad === 0) continue;
+    if(!marcaRaw || (marca !== "ADIDAS" && marca !== "REEBOK") || !grupo){ ignoradas++; continue; }
+    if(!canal){
+      ignoradas++;
+      const k = almRaw || "(vacío)";
+      ignoradosAlm[k] = (ignoradosAlm[k] || 0) + 1;
+      continue;
+    }
+    const k = marca + "||" + grupo + "||" + canal;
+    acc[k] = (acc[k] || 0) + cantidad;
+    if(!marcasVistas.includes(marca)) marcasVistas.push(marca);
+    count++;
+  }
+  if(count === 0 && ignoradas === 0) return false;
+  if(!ctx.quickCleared){
+    resumenState.months[mes] = (resumenState.months[mes] || []).filter(r => r.block !== QUICK_BLOCK);
+    ctx.quickCleared = true;
+  }
+  marcasVistas.forEach(m => ensureTriadRows(mes, QUICK_BLOCK, ctx.quickTitle, m, {}));
+  Object.keys(acc).forEach(k => {
+    const [marca, grupo, canal] = k.split("||");
+    const target = ensureRow(mes, QUICK_BLOCK, ctx.quickTitle, marca, grupo, {});
+    target.channels[canal] = (target.channels[canal] || 0) + acc[k];
+  });
+  let msg = `Base Quick: ${count} registros procesados → "${ctx.quickTitle}".`;
+  const noRec = Object.keys(ignoradosAlm);
+  if(noRec.length) msg += ` ${ignoradas} fila(s) ignoradas por almacén no reconocido (${noRec.slice(0,5).join(", ")}).`;
+  else if(ignoradas) msg += ` ${ignoradas} fila(s) ignoradas por marca/grupo no válido.`;
+  log.push({ type: "ok", msg });
+  return true;
+}
+function processWorkbook(workbook, mes, fileName, log, ctx){
+  ctx = ctx || { quickCleared: false, quickTitle: quickTitleForMonth(mes) };
+  let matched = false;
+  for(const sheetName of workbook.SheetNames){
+    const ws = workbook.Sheets[sheetName];
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+    if(aoa.length === 0) continue;
+    if(tryParseFormatB(aoa, mes, log) || tryParseFormatC(aoa, mes, log) || tryParseFormatA(aoa, mes, log) || tryParseBaseQuick(aoa, mes, log, ctx)){
+      matched = true;
+    }
+  }
+  if(!matched){
+    log.push({ type: "err", msg: `"${fileName}": no se reconoció formato válido.` });
+  } else {
+    log.push({ type: "ok", msg: `"${fileName}" consolidado en ${mes}.` });
+  }
+}
+function handleResumenFiles(fileList){
+  const log = [];
+  const files = Array.from(fileList);
+  let pending = files.length;
+  if(pending === 0) return;
+  const ctx = { quickCleared: false, quickTitle: quickTitleForMonth(resumenState.mes) };
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array", cellDates: false });
+        processWorkbook(workbook, resumenState.mes, file.name, log, ctx);
+      } catch(err) {
+        log.push({ type: "err", msg: `"${file.name}": error al leer (${err.message}).` });
+      }
+      pending--;
+      if(pending === 0){
+        resumenSave();
+        renderResumen();
+        showResumenLog(log);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+function showResumenLog(log){
+  const el = document.getElementById("resumenImportLog");
+  if(!el) return;
+  if(log.length === 0){ el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
+}
+function rowCantidadTotal(row){
+  return CHANNEL_COLUMNS.reduce((sum, c) => sum + (Number(row.channels[c]) || 0), 0);
+}
+function renderResumenThead(){
+  const thead = document.getElementById("resumenThead");
+  if(!thead) return;
+  thead.innerHTML = `
+    <tr>
+      <th class="stk-c1">INGRESOS EMBARQUE</th>
+      <th class="stk-c2">MES</th>
+      <th class="stk-c3">EMBARQUE</th>
+      <th style="min-width:110px;">TIPO DE IMPORTACIÓN</th>
+      <th style="min-width:130px;">FECHA ARRIBO DEPCO</th>
+      <th style="min-width:110px;">CONSOLIDADO</th>
+      <th style="min-width:130px;">FECHA ARRIBO CD</th>
+      <th class="stk-marca">MARCA</th>
+      <th class="stk-grupo">GRUPO</th>
+      <th style="min-width:90px;">CANTIDAD TOTAL</th>
+      ${CHANNEL_COLUMNS.map(c => `<th style="min-width:75px;">${escapeHtml(c)}</th>`).join("")}
+      <th style="min-width:160px;">OBSERVACIONES</th>
+    </tr>`;
+}
+function resumenBlockOf(r){
+  if(r.block === "INTERCOMPANIES" || r.block === "INTERCOMPANY") return "INTERCOMPANIES";
+  if(r.block === QUICK_BLOCK) return QUICK_BLOCK;
+  return "INGRESOS EMBARQUE";
+}
+function renderResumen(){
+  renderResumenThead();
+  const rawList = resumenState.months[resumenState.mes] || [];
+  const emptyEl = document.getElementById("emptyResumen");
+  const tbodyEl = document.getElementById("resumenTbody");
+  if(!tbodyEl) return;
+  
+  document.querySelectorAll("#resumenMonthTabs .month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
+  if(rawList.length === 0){
+    tbodyEl.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+  const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES", QUICK_BLOCK];
+  const structure = {};
+  blocks.forEach(b => structure[b] = []);
+  rawList.forEach(r => {
+    const bKey = resumenBlockOf(r);
+    let bList = structure[bKey];
+    let embGroup = bList.find(e => normTxt(e.embarque) === normTxt(r.embarque));
+    if(!embGroup){
+      embGroup = {
+        embarque: r.embarque,
+        mes: r.mes || resumenState.mes,
+        marcas: []
+      };
+      bList.push(embGroup);
+    }
+    const resolvedM = resolveMarca(r.marca);
+    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(resolvedM));
+    if(!mGroup){
+      mGroup = { marca: resolvedM, rows: {} };
+      embGroup.marcas.push(mGroup);
+    }
+    mGroup.rows[r.grupo] = r;
+  });
+  let html = "";
+  let renderedBlocks = 0;
+  blocks.forEach((blockName) => {
+    const embList = structure[blockName];
+    if(embList.length === 0) return;
+    if(renderedBlocks > 0){
+      html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
+    }
+    renderedBlocks++;
+    const blockTitle = blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : (blockName === QUICK_BLOCK ? quickTitleForMonth(resumenState.mes) : "");
+    const totalBlockRows = embList.reduce((acc, emb) => {
+      return acc + emb.marcas.reduce((mAcc) => mAcc + GRUPOS.length, 0);
+    }, 0);
+    let isFirstRowOfBlock = true;
+    embList.forEach((emb) => {
+      const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
+      let displayTipo = "-";
+      let displayDepco = "-";
+      let displayConsolidado = "-";
+      let displayCD = "-";
+      if(shInfo){
+        displayTipo = tipoLabel(shInfo.tipo);
+        displayConsolidado = (shInfo.consolidado && shInfo.consolidado.trim()) ? shInfo.consolidado.trim() : "-";
+        if(shInfo.fechaArriboDepco){
+          displayDepco = fmtDMY(parseISO(shInfo.fechaArriboDepco));
+        } else if(shInfo.tipo === "DEPCO"){
+          const acts = computeActivities(shInfo);
+          const depAct = acts.find(a => a.key === "ingreso_depco");
+          if(depAct) displayDepco = `Del ${fmtDMY(depAct.start)} al ${fmtDMY(depAct.end)}`;
+        }
+        if(shInfo.fechaArriboCD){
+          displayCD = fmtDMY(parseISO(shInfo.fechaArriboCD));
+        } else {
+          const acts = computeActivities(shInfo);
+          const cdAct = acts.find(a => a.key === "ingreso_cd");
+          if(cdAct) displayCD = `Del ${fmtDMY(cdAct.start)} al ${fmtDMY(cdAct.end)}`;
+        }
+      }
+      const totalEmbarqueRows = emb.marcas.reduce((acc) => acc + GRUPOS.length, 0);
+      let isFirstRowOfEmbarque = true;
+      emb.marcas.forEach((mObj) => {
+        const totalMarcaRows = GRUPOS.length;
+        GRUPOS.forEach((grupoName, gIdx) => {
+          const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
+          const totalRowQty = rowCantidadTotal(row);
+          html += `<tr>`;
+          if(isFirstRowOfBlock){
+            html += `<td rowspan="${totalBlockRows}" class="block-side-cell stk-c1">${escapeHtml(blockTitle)}</td>`;
+            html += `<td rowspan="${totalBlockRows}" class="mes-cell stk-c2">${escapeHtml(resumenState.mes)}</td>`;
+            isFirstRowOfBlock = false;
+          }
+          if(isFirstRowOfEmbarque){
+            html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell stk-c3">${escapeHtml(blockName === QUICK_BLOCK ? "BASE QUICK" : emb.embarque)}</td>`;
+            if(blockName !== "INGRESOS EMBARQUE"){
+              html += `<td rowspan="${totalEmbarqueRows}" colspan="4" style="text-align:center;">-</td>`;
+            } else {
+              html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(displayTipo)}</td>`;
+            }
+          }
+          if(blockName === "INGRESOS EMBARQUE" && gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayDepco)}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayConsolidado)}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayCD)}</td>`;
+          }
+          if(gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}" class="marca-cell stk-marca">${escapeHtml(mObj.marca)}</td>`;
+          }
+          html += `<td class="grupo-cell stk-grupo">${escapeHtml(grupoName)}</td>`;
+          html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : ""}</td>`;
+          CHANNEL_COLUMNS.forEach(c => {
+            const val = row.channels[c] || 0;
+            html += `<td class="channel-val">${val === 0 ? "" : Number(val).toLocaleString()}</td>`;
+          });
+          if(gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}" style="font-size:11px;color:var(--muted);text-align:center;">${escapeHtml(row.observaciones || "")}</td>`;
+          }
+          html += `</tr>`;
+          isFirstRowOfEmbarque = false;
+        });
+      });
+    });
+  });
+  html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
+  
+  const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
+  const blockTotals = {};
+  blocks.forEach(b => blockTotals[b] = blankChannels());
+  rawList.forEach(r => {
+    const g = r.grupo;
+    if(!totalsByGrupo[g]) return;
+    const b = resumenBlockOf(r);
+    CHANNEL_COLUMNS.forEach(c => {
+      const q = Number(r.channels && r.channels[c]) || 0;
+      totalsByGrupo[g][c] += q;
+      blockTotals[b][c] += q;
+    });
+  });
+  const grandTotals = blankChannels();
+  CHANNEL_COLUMNS.forEach(c => {
+    grandTotals[c] = blocks.reduce((sum, b) => sum + (blockTotals[b][c] || 0), 0);
+  });
+  GRUPOS.forEach((gName, idx) => {
+    const gChannels = totalsByGrupo[gName];
+    const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
+    html += `<tr class="totals-group-row">`;
+    if(idx === 0){
+      html += `<td colspan="7" rowspan="3" style="border:none;"></td>`;
+      html += `<td rowspan="3" class="subtot-label stk-marca">Total por grupo</td>`;
+    }
+    html += `<td class="grupo-cell stk-grupo">${escapeHtml(gName)}</td>`;
+    html += `<td class="total-cell">${gTotal ? gTotal.toLocaleString() : 0}</td>`;
+    CHANNEL_COLUMNS.forEach(c => {
+      const q = gChannels[c] || 0;
+      html += `<td class="channel-val">${q ? q.toLocaleString() : 0}</td>`;
+    });
+    if(idx === 0){
+      html += `<td rowspan="3" style="border:none;"></td>`;
+    }
+    html += `</tr>`;
+  });
+  const grandTotalAll = CHANNEL_COLUMNS.reduce((sum, c) => sum + (grandTotals[c] || 0), 0);
+  html += `<tr class="grand-total-row">
+    <td colspan="7" style="border:none;background:transparent;"></td>
+    <td colspan="2" class="grand-label stk-lbl2">CANTIDAD TOTAL</td>
+    <td class="grand-num">${grandTotalAll ? grandTotalAll.toLocaleString() : 0}</td>
+    ${CHANNEL_COLUMNS.map(c => `<td class="grand-channel">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
+    <td style="border:none;background:transparent;"></td>
+  </tr>`;
+  const pct = (v) => grandTotalAll ? ((v / grandTotalAll) * 100).toFixed(1) + "%" : "0.0%";
+  html += `<tr class="pct-row">
+    <td colspan="7" style="border:none;background:transparent;"></td>
+    <td colspan="2" class="pct-label stk-lbl2">% Participación por Canal</td>
+    <td class="pct-val">${grandTotalAll ? "100.0%" : "0.0%"}</td>
+    ${CHANNEL_COLUMNS.map(c => `<td class="pct-val">${pct(grandTotals[c] || 0)}</td>`).join("")}
+    <td style="border:none;background:transparent;"></td>
+  </tr>`;
+  tbodyEl.innerHTML = html;
+  populateResumenGroupSelect(rawList);
+}
+function populateResumenGroupSelect(list){
+  const sel = document.getElementById("resumenGroupSelect");
+  if(!sel) return;
+  const seen = new Set();
+  let opts = `<option value="">— Selecciona —</option>`;
+  list.forEach(r => {
+    const gk = r.block + "||" + r.embarque + "||" + r.marca;
+    if(seen.has(gk)) return;
+    seen.add(gk);
+    opts += `<option value="${escapeHtml(gk)}">${escapeHtml(r.embarque)} · ${escapeHtml(r.marca)}</option>`;
+  });
+  sel.innerHTML = opts;
+}
+document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".month-btn");
+  if(!btn) return;
+  resumenState.mes = btn.dataset.mes;
+  renderResumen();
+});
+const resumenDropzone = document.getElementById("resumenDropzone");
+const resumenFileInput = document.getElementById("resumenFileInput");
+if(resumenDropzone && resumenFileInput){
+  resumenDropzone.addEventListener("click", () => resumenFileInput.click());
+  resumenFileInput.addEventListener("change", (e) => { handleResumenFiles(e.target.files); e.target.value = ""; });
+  resumenDropzone.addEventListener("dragover", (e) => { e.preventDefault(); resumenDropzone.classList.add("dragover"); });
+  resumenDropzone.addEventListener("dragleave", () => { resumenDropzone.classList.remove("dragover"); });
+  resumenDropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    resumenDropzone.classList.remove("dragover");
+    if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
+  });
+}
+document.getElementById("btnRemoveResumenGroup").addEventListener("click", () => {
+  const sel = document.getElementById("resumenGroupSelect");
+  if(!sel || !sel.value) return;
+  const [block, embarque, marca] = sel.value.split("||");
+  resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
+  resumenSave();
+  renderResumen();
+  showToast("🗑️ Quitado del mes");
+});
+document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
+  if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
+  resumenState.months[resumenState.mes] = [];
+  resumenSave();
+  renderResumen();
+  showToast("🧹 Mes limpiado");
+});
+document.getElementById("btnExportResumen").addEventListener("click", () => {
+  const tbl = document.getElementById("resumenTable");
+  const wb = XLSX.utils.table_to_book(tbl, { sheet: `RESUMEN_${resumenState.mes}` });
+  XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
+  showToast("⬇ Archivo Excel exportado");
+});
+
+/* =========================================================
+   INICIALIZACIÓN
+========================================================= */
+initFirebase();
+})();
+</script>
+</body>
+</html>
