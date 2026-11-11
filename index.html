@@ -133,7 +133,6 @@
     color:#856404 !important;
     border:1px solid #ffeeba !important;
   }
-
   /* ALERTAS BANNER */
   .alerts-container{margin-bottom:16px;}
   .alert-banner{
@@ -145,7 +144,6 @@
   .alert-banner .alert-content{flex:1;}
   .alert-banner ul{margin:4px 0 0 18px;padding:0;font-size:12px;}
   .alert-banner li{margin-bottom:3px;}
-
   /* ---------- SHIPMENT / GANTT BLOCK ---------- */
   .shipment-block{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:22px;overflow:hidden;background:#fff;}
   .shipment-header{
@@ -162,7 +160,7 @@
   .tag-marca.REEBOK{background:#0d4a8c;color:#fff;}
   .tag-marca.ADI_RBK{background:linear-gradient(90deg,#C00000 50%,#0d4a8c 50%);color:#fff;}
   .gantt-scroll{overflow-x:auto;padding:14px;}
-  .gantt-grid{display:grid;grid-auto-rows:min-content;row-gap:2px;position:relative;}
+  .gantt-grid{display:grid;grid-auto-rows:min-content;position:relative;}
   .day-head{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:4px 0;font-size:10.5px;font-weight:700;border-left:1px solid #eef0f5;color:var(--muted);
@@ -176,11 +174,18 @@
   .row-track{position:relative;min-height:28px;border-left:1px solid #eef0f5;transition:background .15s;}
   .row-track.weekend-col{background:#f7f8fb;}
   .row-track.drag-over{background:rgba(91,155,213,.25) !important;box-shadow:inset 0 0 0 2px var(--accent-2);}
+  
+  /* MEJORA EN CAJONES DE ACTIVIDADES: ALTURA DINÁMICA, TEXTO MULTILÍNEA Y ELEVACIÓN */
   .act-bar{
-    grid-row:1;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;
-    font-size:10.3px;font-weight:700;color:#fff;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    min-height:26px;height:auto;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:700;color:#fff;padding:4px 6px;
+    white-space:normal;line-height:1.2;text-align:center;word-break:break-word;
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
-    cursor:grab;user-select:none;transition:transform .1s, opacity .15s;z-index:2;
+    cursor:grab;user-select:none;transition:transform .1s, box-shadow .15s;z-index:2;
+  }
+  .act-bar:hover{
+    z-index:10;
+    box-shadow:0 3px 10px rgba(0,0,0,.25), inset 0 0 0 1px rgba(0,0,0,.15);
   }
   .act-bar:active{cursor:grabbing;transform:scale(0.98);opacity:.85;}
   .act-bar.dragging{opacity:.4;outline:2px dashed #000;}
@@ -206,7 +211,6 @@
   .zone-caption{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 2px 2px;}
   .legend-table{margin-top:10px;}
   .legend-table .sw{width:16px;height:16px;border-radius:4px;display:inline-block;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);}
-
   .month-picker{display:flex;align-items:center;gap:8px;}
   footer.hint{max-width:1600px;margin:0 auto;padding:0 24px 30px 24px;color:var(--muted);font-size:11.5px;}
   @media (max-width:900px){
@@ -332,7 +336,6 @@
     <button class="tab" data-view="resumen">📑 Hoja de Resúmenes</button>
   </div>
 </div>
-
 <div id="firebaseErrorBanner" style="display:none;" class="alerts-container no-print">
   <div class="alert-banner danger" style="margin:10px 24px 0 24px;">
     <span class="alert-icon">🔒</span>
@@ -342,7 +345,6 @@
     </div>
   </div>
 </div>
-
 <!-- ============ VIEW: INPUTS ============ -->
 <div class="view active" id="view-inputs">
   <div class="card">
@@ -569,17 +571,14 @@
     <div class="empty" id="emptyResumen" style="display:none;">No hay datos cargados para este mes todavía. Arrastra un archivo Excel arriba para comenzar.</div>
   </div>
 </div>
-
 <footer class="hint no-print">
   <b>Modo Híbrido:</b> Sincronización en la nube con respaldo local autoguardado en tiempo real.
 </footer>
-
 <script>
 (function(){
 "use strict";
-
 const firebaseConfig = {
-  apiKey: "AIzaSyBQvCoA6p83O12z95pvbOO12hkjmrj5Ssk",
+  apiKey: "AIzaSyBQvCoA6p83012z95pvb0012hkjmrj5Ssk",
   authDomain: "embarques-mdp-7c49b.firebaseapp.com",
   databaseURL: "https://embarques-mdp-7c49b-default-rtdb.firebaseio.com",
   projectId: "embarques-mdp-7c49b",
@@ -589,7 +588,6 @@ const firebaseConfig = {
 };
 const FIREBASE_PATH = "medeport";
 const LOCAL_STORAGE_KEY = "medeport_backup_v2";
-
 let cloudMode = false;
 let db = null;
 let shipmentsRef = null;
@@ -597,7 +595,6 @@ let holidaysRef = null;
 let microRef = null;
 let resumenRef = null;
 let connectedRef = null;
-
 function setSyncStatus(mode){
   const dot = document.getElementById("syncDot");
   const label = document.getElementById("syncLabel");
@@ -607,7 +604,6 @@ function setSyncStatus(mode){
   else if(mode==="offline") label.textContent = "Sin conexión (Autoguardado Local)";
   else label.textContent = "Autoguardado local activo";
 }
-
 function saveLocalBackup(){
   try{
     const payload = {
@@ -622,7 +618,6 @@ function saveLocalBackup(){
     console.warn("No se pudo guardar copia local:", e);
   }
 }
-
 function loadLocalBackup(){
   try{
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -638,7 +633,6 @@ function loadLocalBackup(){
     return false;
   }
 }
-
 function initFirebase(){
   loadLocalBackup();
   try{
@@ -685,7 +679,6 @@ function initFirebase(){
           ? val.filter(Boolean)
           : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
       } else if(firstLoad && microState.items.length){
-        // La nube está vacía pero hay respaldo local: subirlo SIN sobrescribir nada existente
         microCreateIfMissing(microState.items.filter(it=> it && it.id && (!it.shipmentId || state.shipmentsMap[it.shipmentId])));
       }
       microLoaded = true;
@@ -701,7 +694,6 @@ function initFirebase(){
       document.getElementById("firebaseErrorBanner").style.display = "block";
       setSyncStatus("local");
     });
-
     resumenRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
@@ -716,21 +708,17 @@ function initFirebase(){
     cloudMode = false;
   }
 }
-
 const state = {
   shipmentsMap: {},
   holidays: [],
   editingId: null
 };
-
 function getShipmentsArray(){
   return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
 }
-
 function generateId(){
   return "sh_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
 }
-
 const RESPONSABLE_HORA = "5:30pm";
 const MARCA_LABELS = {ADIDAS:"ADIDAS", REEBOK:"REEBOK", ADI_RBK:"ADI & RBK"};
 function marcaLabel(marca){ return MARCA_LABELS[marca] || marca; }
@@ -738,7 +726,6 @@ const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLID
 function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
 function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
 function shipmentBelongsToBrand(sh, marca){ return sh.marca === marca || sh.marca === "ADI_RBK"; }
-
 function parseISO(str){
   if(!str) return null;
   const [y,m,d] = str.split("-").map(Number);
@@ -789,7 +776,6 @@ function dateRange(start, end){
   return days;
 }
 const DOW_LETTERS = ["D","L","M","M","J","V","S"];
-
 function bar(key,label,resp,color,start,end,zone,textDark,bordered){
   return {key,label,responsable:resp,color,start,end:end||start,zone:zone||"main",textDark:!!textDark,bordered:!!bordered};
 }
@@ -889,7 +875,6 @@ function computeConsolidadoOTN(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
-
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
@@ -950,44 +935,31 @@ function getAlertsForShipment(sh){
 }
 function enviarAlertaPorPowerAutomate(alertas) {
   if (!alertas || alertas.length === 0) return;
-
   const hoy = new Date();
   hoy.setHours(0,0,0,0);
   const hoyStr = hoy.toISOString().slice(0, 10);
-
-  // Control para no enviar correos repetidos el mismo día
   if (localStorage.getItem("ultimo_correo_alerta") === hoyStr) return;
-
   let resumen = "Hola,\n\nSe presenta el resumen actualizado de actividades de embarques en Medeport:\n\n";
-
   alertas.forEach(a => {
     const fechaLimite = new Date(a.dueDate);
     fechaLimite.setHours(0,0,0,0);
-
     let estadoTexto = "";
     if (fechaLimite < hoy) {
       estadoTexto = `🚨 ESTÁ ATRASADA (Venció el ${fmtDMY(a.dueDate)})`;
     } else {
       estadoTexto = `📌 ESTÁ PENDIENTE PARA HOY (${fmtDMY(a.dueDate)})`;
     }
-
     resumen += `• [${a.marca}] Embarque: "${a.shipmentName}"\n`;
     resumen += `  Actividad: ${a.activityLabel}\n`;
     resumen += `  Estado: ${estadoTexto}\n\n`;
   });
-
   resumen += "Por favor ingresar al sistema para actualizar el estado de los microprocesos.\n\nSaludos,";
-
-  // Tu URL de Power Automate
   const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bftl1Cy-S_cvpjyC2b1KdS6dnNWVsWQgHUCZo3cayB8";
-
   const payload = {
-    // Reemplaza con las direcciones reales separadas por punto y coma (;)
     destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com",
     asunto: "⚠️ Notificación de Actividades y Embarques - Medeport",
     mensaje: resumen
   };
-
   fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1009,13 +981,10 @@ function checkAllAlerts(){
     const shAlerts = getAlertsForShipment(sh);
     allAlerts = allAlerts.concat(shAlerts);
   });
-
   renderAlertsUI(allAlerts);
-
   if (allAlerts.length > 0) {
     enviarAlertaPorPowerAutomate(allAlerts);
   }
-
   return allAlerts;
 }
 function renderAlertsUI(alerts){
@@ -1052,6 +1021,33 @@ function renderAlertsUI(alerts){
   }
 }
 
+/* =========================================================
+   ALGORITMO DE DISTRIBUCIÓN DE CARRILES (LANES) PARA GANTT
+   Evita que actividades del mismo día o solapadas se monten
+========================================================= */
+function assignLanes(bars){
+  const sorted = [...bars].sort((a,b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime());
+  const lanes = [];
+  sorted.forEach(barItem => {
+    let placed = false;
+    for(let i=0; i<lanes.length; i++){
+      const lastInLane = lanes[i][lanes[i].length - 1];
+      // Si la barra actual comienza después de que terminó la última barra en este carril, no hay colisión
+      if(barItem.start.getTime() > lastInLane.end.getTime()){
+        lanes[i].push(barItem);
+        barItem.lane = i + 1;
+        placed = true;
+        break;
+      }
+    }
+    if(!placed){
+      lanes.push([barItem]);
+      barItem.lane = lanes.length;
+    }
+  });
+  return { bars: sorted, maxLanes: Math.max(lanes.length, 1) };
+}
+
 function renderShipmentGantt(sh){
   const acts = computeActivities(sh);
   if(acts.length === 0){
@@ -1064,7 +1060,7 @@ function renderShipmentGantt(sh){
   });
   const days = dateRange(minDate, maxDate);
   const colCount = days.length;
-  const templateCols = `repeat(${colCount}, minmax(30px,1fr))`;
+  const templateCols = `repeat(${colCount}, minmax(32px,1fr))`;
   let headerCells = "";
   days.forEach(d=>{
     const cls = ["day-head"];
@@ -1075,12 +1071,14 @@ function renderShipmentGantt(sh){
   
   const shAlerts = getAlertsForShipment(sh);
   function rowForBars(barsInRow){
+    if(!barsInRow || barsInRow.length === 0) return "";
+    const { bars, maxLanes } = assignLanes(barsInRow);
     let cells = "";
-    for(let i=0;i<colCount;i++){
+    for(let i=0; i<colCount; i++){
       const d = days[i];
-      cells += `<div class="row-track drop-target ${isWeekend(d)?'weekend-col':''}" data-date="${toISO(d)}" data-shipment-id="${sh.id}" style="grid-column:${i+1}/${i+2};"></div>`;
+      cells += `<div class="row-track drop-target ${isWeekend(d)?'weekend-col':''}" data-date="${toISO(d)}" data-shipment-id="${sh.id}" style="grid-column:${i+1}/${i+2}; grid-row: 1 / span ${maxLanes};"></div>`;
     }
-    barsInRow.forEach(a=>{
+    bars.forEach(a=>{
       const startIdx = Math.round((a.start - minDate)/86400000)+1;
       const endIdx = Math.round((a.end - minDate)/86400000)+2;
       const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
@@ -1089,10 +1087,10 @@ function renderShipmentGantt(sh){
                      data-shipment-id="${sh.id}" 
                      data-bar-key="${a.key}" 
                      data-duration="${Math.round((a.end - a.start)/86400000)}" 
-                     style="grid-column:${startIdx}/${endIdx}; background:${a.color};" 
+                     style="grid-column:${startIdx}/${endIdx}; grid-row:${a.lane}; background:${a.color};" 
                      title="${a.label} (${a.responsable}) — ${fmtDMY(a.start)}${a.isCustom ? ' [Ajustada manualmente]' : ''}${hasAlert ? ' ⚠️ [ALERTA: Tarea incompleta en Microprocesos]' : ''}&#10;Arrastra a otro día para moverla">${hasAlert ? '⚠️ ' : ''}${escapeHtml(a.label)}</div>`;
     });
-    return `<div class="gantt-grid" style="grid-template-columns:${templateCols};margin-bottom:4px;">${cells}</div>`;
+    return `<div class="gantt-grid" style="grid-template-columns:${templateCols}; grid-template-rows: repeat(${maxLanes}, minmax(28px, auto)); row-gap: 4px; margin-bottom:6px;">${cells}</div>`;
   }
   
   const topRow = acts.filter(a=>a.zone==="top");
@@ -1152,7 +1150,6 @@ function renderBrandView(marca, containerId){
   container.innerHTML = list.map(renderShipmentGantt).join("");
   bindGanttDragAndDrop();
 }
-
 let draggedBarPayload = null;
 function bindGanttDragAndDrop(){
   document.querySelectorAll(".act-bar[draggable=true]").forEach(bar=>{
@@ -1219,7 +1216,6 @@ document.addEventListener("click", (e)=>{
     showToast("↺ Fechas automáticas restablecidas");
   }
 });
-
 function getAvailableMonths(){
   const set = new Set();
   getShipmentsArray().forEach(s=>{
@@ -1258,7 +1254,7 @@ function renderConsolidated(){
   const monthEnd = new Date(y, m, 0);
   const days = dateRange(monthStart, monthEnd);
   const colCount = days.length;
-  const templateCols = `repeat(${colCount}, minmax(26px,1fr))`;
+  const templateCols = `repeat(${colCount}, minmax(28px,1fr))`;
   const rows = [];
   getShipmentsArray().forEach(s=>{
     if(!shipmentMatchesFilter("consolidado", s)) return;
@@ -1284,25 +1280,30 @@ function renderConsolidated(){
   });
   let html = `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};">${headerCells}</div>`;
   rows.forEach(r=>{
-    let cells = `<div class="row-label-col"><span class="tag-marca ${r.sh.marca}" style="margin-right:6px;font-size:9.5px;padding:2px 6px;">${marcaInitial(r.sh.marca)}</span> ${escapeHtml(r.sh.nombre)}</div>`;
+    const visibleActs = r.acts.filter(a => {
+      const s = a.start < monthStart ? monthStart : a.start;
+      const e = a.end > monthEnd ? monthEnd : a.end;
+      return !(e < monthStart || s > monthEnd);
+    });
+    const { bars, maxLanes } = assignLanes(visibleActs);
+    let cells = `<div class="row-label-col" style="grid-row:1/span ${maxLanes};"><span class="tag-marca ${r.sh.marca}" style="margin-right:6px;font-size:9.5px;padding:2px 6px;">${marcaInitial(r.sh.marca)}</span> ${escapeHtml(r.sh.nombre)}</div>`;
     for(let i=0;i<colCount;i++){
       const d = days[i];
-      cells += `<div class="row-track ${isWeekend(d)?'weekend-col':''}" style="grid-column:${i+2}/${i+3};"></div>`;
+      cells += `<div class="row-track ${isWeekend(d)?'weekend-col':''}" style="grid-column:${i+2}/${i+3}; grid-row:1/span ${maxLanes};"></div>`;
     }
-    r.acts.forEach(a=>{
+    bars.forEach(a=>{
       const s = a.start < monthStart ? monthStart : a.start;
       const e = a.end > monthEnd ? monthEnd : a.end;
       if(e < monthStart || s > monthEnd) return;
       const startIdx = Math.round((s - monthStart)/86400000) + 2;
       const endIdx = Math.round((e - monthStart)/86400000) + 3;
       const isCd = a.key === "ingreso_cd";
-      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" style="grid-column:${startIdx}/${endIdx}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" title="${a.label} — ${fmtDMY(a.start)}">${isCd ? "CD" : ""}</div>`;
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" style="grid-column:${startIdx}/${endIdx}; grid-row:${a.lane}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" title="${a.label} — ${fmtDMY(a.start)}">${isCd ? "CD" : escapeHtml(a.label)}</div>`;
     });
-    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};margin-bottom:3px;">${cells}</div>`;
+    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols}; grid-template-rows:repeat(${maxLanes}, minmax(26px, auto)); row-gap:3px; margin-bottom:4px;">${cells}</div>`;
   });
   if(gridEl) gridEl.innerHTML = html;
 }
-
 function renderInputsTable(){
   const tbody = document.getElementById("shipmentsTbody");
   const emptyEl = document.getElementById("emptyShipments");
@@ -1373,7 +1374,6 @@ function fillFormForEdit(s){
   document.getElementById("btnAddShipment").textContent = "💾 Guardar cambios";
   document.getElementById("btnCancelEdit").style.display = "inline-flex";
 }
-
 const FILTER_MONTHS = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const viewFilters = {
   inputs:        { year: 0, month: 0 },
@@ -1482,7 +1482,6 @@ function showToast(msg, kind){
   clearTimeout(t._hideTimer);
   t._hideTimer = setTimeout(()=>{ t.style.opacity="0"; }, 2200);
 }
-
 function pushAllToFirebase(){
   if(!cloudMode || !shipmentsRef) return;
   shipmentsRef.set(state.shipmentsMap);
@@ -1493,7 +1492,6 @@ function pushAllToFirebase(){
   resumenRef.set(resumenState.months);
   showToast("🔄 Datos locales subidos exitosamente a Firebase");
 }
-
 function saveShipment(id, data){
   state.shipmentsMap[id] = data;
   saveLocalBackup();
@@ -1502,7 +1500,6 @@ function saveShipment(id, data){
   }
   renderAll();
 }
-
 function deleteShipment(id){
   const delIds = microState.items.filter(it=> it.shipmentId === id).map(it=>it.id);
   microState.items = microState.items.filter(it=> it.shipmentId !== id);
@@ -1514,7 +1511,6 @@ function deleteShipment(id){
   }
   renderAll();
 }
-
 function saveHolidays(list){
   state.holidays = list;
   saveLocalBackup();
@@ -1523,7 +1519,6 @@ function saveHolidays(list){
   }
   renderAll();
 }
-
 document.getElementById("btnAddShipment").addEventListener("click", ()=>{
   const data = readForm();
   if(!data.nombre){ alert("Ingresa el nombre del embarque."); return; }
@@ -1556,7 +1551,6 @@ document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
   saveHolidays(valid);
 });
 document.getElementById("btnSyncCloud").addEventListener("click", pushAllToFirebase);
-
 /* ---------- EXPORTAR / IMPORTAR JSON ---------- */
 document.getElementById("btnExport").addEventListener("click", ()=>{
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
@@ -1572,7 +1566,6 @@ document.getElementById("btnExport").addEventListener("click", ()=>{
   a.click();
   a.remove();
 });
-
 document.getElementById("btnImport").addEventListener("click", ()=> document.getElementById("fileImport").click());
 document.getElementById("fileImport").addEventListener("change", (e)=>{
   const file = e.target.files[0];
@@ -1595,7 +1588,6 @@ document.getElementById("fileImport").addEventListener("change", (e)=>{
   };
   reader.readAsText(file);
 });
-
 document.querySelectorAll(".tab").forEach(tab=>{
   tab.addEventListener("click", ()=>{
     document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -1614,7 +1606,7 @@ document.getElementById("monthPicker").addEventListener("change", renderConsolid
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
 
 /* =========================================================
-   MICROPROCESOS (CON COLORES DINÁMICOS POR ESTADO)
+   MICROPROCESOS (CON COLORES DINÁMICOS Y AUTO-FECHA)
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
@@ -1626,7 +1618,6 @@ const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
 let microLoaded = false;
 let shipmentsLoaded = false;
-
 function cleanTaskItem(item) {
   const clean = { ...item };
   Object.keys(clean).forEach(key => {
@@ -1636,7 +1627,6 @@ function cleanTaskItem(item) {
   });
   return clean;
 }
-
 function microPersist(updates){
   saveLocalBackup();
   if(!(cloudMode && microRef)) return;
@@ -1674,7 +1664,6 @@ function generateTasksForShipment(shipment){
   }));
 }
 function microCreateIfMissing(tasks){
-  // Crea cada tarea en Firebase SOLO si ese nodo todavía no existe (nunca pisa estados guardados)
   if(!(cloudMode && microRef)) return;
   tasks.forEach(t=>{
     if(!t || !t.id) return;
@@ -1684,8 +1673,6 @@ function microCreateIfMissing(tasks){
   });
 }
 function ensureTasksForAllShipments(){
-  // En modo nube, no generar tareas hasta haber recibido embarques Y microprocesos desde Firebase.
-  // Antes se generaban tareas en blanco con datos locales/vacíos y se escribían encima de las completadas.
   if(cloudMode && !(microLoaded && shipmentsLoaded)) return;
   const existingIds = new Set(microState.items.map(it=>it.id));
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
@@ -1746,13 +1733,11 @@ function renderMicroThead(trackMode){
     thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th>Status</th><th>Fecha</th><th>Obs</th><th>Acciones</th></tr>`;
   }
 }
-
 function getStatusClass(value){
   if(value === "COMPLETO") return "status-completo";
   if(value === "N/A") return "status-na";
   return "status-pendiente";
 }
-
 function statusSelectHtml(id, field, value){
   const v = value || "";
   const cls = getStatusClass(v);
@@ -1812,25 +1797,59 @@ function renderMicroprocesos(){
     return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
   }).join("");
 }
-
 document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
 
+/* =========================================================
+   EVENTOS DE MICROPROCESOS: AUTO-FECHA AL COMPLETAR Y EDICIÓN MANUAL
+========================================================= */
 document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
   const itemId = el.dataset.id;
   const field = el.dataset.field;
   const item = microState.items.find(it=>it.id===itemId);
-  if(item){
-    item[field] = el.value || null;
-    if(el.classList.contains("inline-status")){
-      el.className = "inline-status " + getStatusClass(el.value);
+  if(!item) return;
+
+  if(el.classList.contains("inline-status")){
+    const newStatus = el.value || null;
+    item[field] = newStatus;
+    el.className = "inline-status " + getStatusClass(newStatus);
+    
+    // Si se marca como COMPLETO, auto-asignar fecha de hoy si estaba vacía
+    if(newStatus === "COMPLETO"){
+      let dateField = "fecha";
+      if(field === "adidas_status") dateField = "adidas_fecha";
+      else if(field === "reebok_status") dateField = "reebok_fecha";
+
+      if(!item[dateField]){
+        const todayStr = toISO(new Date());
+        item[dateField] = todayStr;
+        const tr = el.closest("tr");
+        if(tr){
+          const dateInput = tr.querySelector(`input.inline-fecha[data-field="${dateField}"]`);
+          if(dateInput) dateInput.value = todayStr;
+        }
+        microPersist({
+          [itemId + "/" + field]: newStatus,
+          [itemId + "/" + dateField]: todayStr
+        });
+        checkAllAlerts();
+        showToast("✅ Actividad completada con fecha de hoy");
+        return;
+      }
     }
-    microSaveField(itemId, field, item[field]);
+    
+    microSaveField(itemId, field, newStatus);
     checkAllAlerts();
     showToast("✅ Cambio guardado");
+  } else if(el.classList.contains("inline-fecha")){
+    // Edición manual de fecha (ej. colocar fecha de ayer u otra elegida)
+    const newDate = el.value || null;
+    item[field] = newDate;
+    microSaveField(itemId, field, newDate);
+    showToast("📅 Fecha guardada");
   }
 });
 
@@ -1874,6 +1893,28 @@ function openMicroModal(item){
   document.getElementById("m_singleTrackWrap").style.display = trackMode==="SINGLE" ? "block" : "none";
   document.getElementById("m_adidasWrap").style.display = (trackMode==="DUAL"||trackMode==="ADIDAS_ONLY") ? "block" : "none";
   document.getElementById("m_reebokWrap").style.display = (trackMode==="DUAL"||trackMode==="REEBOK_ONLY") ? "block" : "none";
+  
+  if(item){
+    document.getElementById("m_status").value = item.status || "";
+    document.getElementById("m_fecha").value = item.fecha || "";
+    document.getElementById("m_obs").value = item.obs || "";
+    document.getElementById("m_adidas_status").value = item.adidas_status || "";
+    document.getElementById("m_adidas_fecha").value = item.adidas_fecha || "";
+    document.getElementById("m_adidas_obs").value = item.adidas_obs || "";
+    document.getElementById("m_reebok_status").value = item.reebok_status || "";
+    document.getElementById("m_reebok_fecha").value = item.reebok_fecha || "";
+    document.getElementById("m_reebok_obs").value = item.reebok_obs || "";
+  } else {
+    document.getElementById("m_status").value = "";
+    document.getElementById("m_fecha").value = "";
+    document.getElementById("m_obs").value = "";
+    document.getElementById("m_adidas_status").value = "";
+    document.getElementById("m_adidas_fecha").value = "";
+    document.getElementById("m_adidas_obs").value = "";
+    document.getElementById("m_reebok_status").value = "";
+    document.getElementById("m_reebok_fecha").value = "";
+    document.getElementById("m_reebok_obs").value = "";
+  }
   document.getElementById("microModal").classList.add("open");
 }
 function closeMicroModal(){ document.getElementById("microModal").classList.remove("open"); microState.editingId = null; }
@@ -1883,15 +1924,40 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   const act = document.getElementById("m_act").value.trim();
   if(!act){ alert("Ingresa la actividad."); return; }
   const ordRaw = document.getElementById("m_ord").value;
+  
+  const statusVal = document.getElementById("m_status").value || null;
+  let fechaVal = document.getElementById("m_fecha").value || null;
+  if(statusVal === "COMPLETO" && !fechaVal){
+    fechaVal = toISO(new Date());
+  }
+
+  const adStatus = document.getElementById("m_adidas_status").value || null;
+  let adFecha = document.getElementById("m_adidas_fecha").value || null;
+  if(adStatus === "COMPLETO" && !adFecha){
+    adFecha = toISO(new Date());
+  }
+
+  const rbStatus = document.getElementById("m_reebok_status").value || null;
+  let rbFecha = document.getElementById("m_reebok_fecha").value || null;
+  if(rbStatus === "COMPLETO" && !rbFecha){
+    rbFecha = toISO(new Date());
+  }
+
   const data = {
     proc: microState.selectedKey===INTERCOMPANY_KEY ? "INTERCOMPANY" : (state.shipmentsMap[microState.selectedKey]||{}).tipo,
     shipmentId: microState.selectedKey===INTERCOMPANY_KEY ? null : microState.selectedKey,
     trackMode: "SINGLE",
     ord: ordRaw === "" ? null : Number(ordRaw),
     act,
-    status: document.getElementById("m_status").value || null,
-    fecha: document.getElementById("m_fecha").value || null,
-    obs: document.getElementById("m_obs").value.trim() || null
+    status: statusVal,
+    fecha: fechaVal,
+    obs: document.getElementById("m_obs").value.trim() || null,
+    adidas_status: adStatus,
+    adidas_fecha: adFecha,
+    adidas_obs: document.getElementById("m_adidas_obs").value.trim() || null,
+    reebok_status: rbStatus,
+    reebok_fecha: rbFecha,
+    reebok_obs: document.getElementById("m_reebok_obs").value.trim() || null
   };
   let saved;
   if(microState.editingId){
@@ -1993,7 +2059,6 @@ function blankChannels(){
 }
 const resumenState = { mes: "JULIO", months: {} };
 RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
-
 function resumenSave(){
   saveLocalBackup();
   if(cloudMode && resumenRef){
@@ -2212,7 +2277,6 @@ function tryParseFormatC(aoa, mes, log){
   log.push({ type: (count === 0 || sinConcepto || sinGrupo) ? "err" : "ok", msg });
   return true;
 }
-
 const QUICK_BLOCK = "BASE QUICK";
 const QUICK_CHANNELS = ["TRANS","DEPSI","DEPCO"];
 const MESES_CALENDARIO = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
@@ -2587,7 +2651,6 @@ document.getElementById("btnExportResumen").addEventListener("click", () => {
   XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
   showToast("⬇ Archivo Excel exportado");
 });
-
 /* =========================================================
    INICIALIZACIÓN
 ========================================================= */
