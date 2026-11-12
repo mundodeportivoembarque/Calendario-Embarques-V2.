@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Medeport | Planificación & Cronograma de Embarques</title>
-<!-- Firebase SDK (compat, vía CDN)) -->
+<!-- Firebase SDK (compat, vía CDN) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <!-- SheetJS: motor de lectura/escritura de archivos Excel (.xlsx) -->
@@ -69,9 +69,9 @@
   .sync-dot.online{background:#4CD964;box-shadow:0 0 0 3px rgba(76,217,100,.25);}
   .sync-dot.offline{background:#E5484D;box-shadow:0 0 0 3px rgba(229,72,77,.25);}
   .sync-dot.local{background:#f5c542;box-shadow:0 0 0 3px rgba(245,197,66,.25);}
-  .tabs{display:flex;gap:2px;margin-top:14px;}
+  .tabs{display:flex;gap:2px;margin-top:14px;flex-wrap:wrap;}
   .tab{
-    padding:10px 18px;font-size:13px;font-weight:700;color:#c7d1ea;background:transparent;
+    padding:10px 16px;font-size:13px;font-weight:700;color:#c7d1ea;background:transparent;
     border:none;border-bottom:3px solid transparent;cursor:pointer;border-radius:8px 8px 0 0;
   }
   .tab:hover{color:#fff;background:rgba(255,255,255,.06);}
@@ -133,6 +133,27 @@
     color:#856404 !important;
     border:1px solid #ffeeba !important;
   }
+
+  /* SELECTOR DE ESTADO DE ARRIBO (EN TRÁNSITO / YA ARRIBÓ) */
+  select.arrival-status-select{
+    font-weight:800;
+    font-size:11.5px;
+    border-radius:6px;
+    padding:5px 9px;
+    cursor:pointer;
+    transition:background-color .2s, color .2s, border-color .2s;
+  }
+  select.arrival-status-select.transito{
+    background-color:#fff3cd !important;
+    color:#856404 !important;
+    border:1px solid #ffeeba !important;
+  }
+  select.arrival-status-select.arribo{
+    background-color:#d4edda !important;
+    color:#155724 !important;
+    border:1px solid #c3e6cb !important;
+  }
+
   /* ALERTAS BANNER */
   .alerts-container{margin-bottom:16px;}
   .alert-banner{
@@ -175,7 +196,7 @@
   .row-track.weekend-col{background:#f7f8fb;}
   .row-track.drag-over{background:rgba(91,155,213,.25) !important;box-shadow:inset 0 0 0 2px var(--accent-2);}
   
-  /* MEJORA EN CAJONES DE ACTIVIDADES: ALTURA DINÁMICA, TEXTO MULTILÍNEA Y ELEVACIÓN */
+  /* CAJONES DE ACTIVIDADES: ALTURA DINÁMICA, TEXTO MULTILÍNEA Y ELEVACIÓN */
   .act-bar{
     min-height:26px;height:auto;border-radius:6px;display:flex;align-items:center;justify-content:center;
     font-size:10.5px;font-weight:700;color:#fff;padding:4px 6px;
@@ -306,6 +327,28 @@
   tr.grand-total-row td.grand-num{text-align:center;color:#c00000;font-variant-numeric:tabular-nums;}
   tr.grand-total-row td.grand-channel{text-align:center;color:#1c2333;font-variant-numeric:tabular-nums;}
   tr.empty-sep-row td{background:#f9fbfd;height:12px;border:none;}
+
+  /* ---------- TABLA DE ARRIBOS PARA CD (FORM-RM-01-01) ---------- */
+  .arribos-wrap{overflow:auto;max-height:75vh;border:1px solid #d0d7de;border-radius:8px;box-shadow:var(--shadow);background:#fff;}
+  table.arribos-table{border-collapse:separate;border-spacing:0;min-width:1550px;font-size:12px;color:#1c2333;}
+  table.arribos-table th, table.arribos-table td{
+    border-right:1px solid #d0d7de;border-bottom:1px solid #d0d7de;padding:6px 8px;text-align:center;vertical-align:middle;white-space:nowrap;
+  }
+  table.arribos-table thead tr:nth-child(1) th{background:#1B2A4A;color:#fff;font-size:12px;letter-spacing:.4px;padding:9px;}
+  table.arribos-table thead tr:nth-child(2) th{background:#243660;color:#fff;font-size:11px;padding:6px;}
+  table.arribos-table thead tr:nth-child(3) th{background:#e9eef7;color:#1B2A4A;font-size:10.5px;padding:6px;}
+  table.arribos-table th.grp-zap{background:#2f5597 !important;color:#fff !important;}
+  table.arribos-table th.grp-rop{background:#548235 !important;color:#fff !important;}
+  table.arribos-table th.grp-acc{background:#c55a11 !important;color:#fff !important;}
+  table.arribos-table td.fecha-cd-cell{background:#fffbe6;font-weight:700;color:#5c4600;}
+  table.arribos-table td.emb-name-cell{text-align:left;font-weight:700;color:var(--navy);}
+  table.arribos-table td.tot-bold{font-weight:800;background:#f8fafd;color:#1B2A4A;}
+  table.arribos-table input.arribos-input{
+    width:95px;padding:4px 6px;font-size:12px;text-align:center;border:1px solid #c5cde0;border-radius:5px;background:#fff;
+  }
+  table.arribos-table input.arribos-input.wide{width:115px;}
+  table.arribos-table input.arribos-input:focus{border-color:var(--accent-2);background:#f4f9ff;}
+  table.arribos-table tfoot td{background:#e2efda;font-weight:800;border-top:2px solid #a9d18e;color:#1c2333;}
 </style>
 </head>
 <body>
@@ -334,6 +377,7 @@
     <button class="tab" data-view="consolidado">📊 Vista Consolidada</button>
     <button class="tab" data-view="microprocesos">🔬 Microprocesos y Tareas</button>
     <button class="tab" data-view="resumen">📑 Hoja de Resúmenes</button>
+    <button class="tab" data-view="arribos_cd">🚚 Tabla de Arribos para CD</button>
   </div>
 </div>
 <div id="firebaseErrorBanner" style="display:none;" class="alerts-container no-print">
@@ -392,7 +436,7 @@
         <thead>
           <tr>
             <th>Marca</th><th>Embarque</th><th>Tipo</th><th>Consolidado</th>
-            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD</th><th>Acciones</th>
+            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD</th><th>Estado CD</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody id="shipmentsTbody"></tbody>
@@ -411,7 +455,7 @@
   <div class="card-head" style="margin-bottom:6px;">
     <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
   </div>
-  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
   <div class="filter-bar" data-view="adidas"></div>
   <div id="adidasAlerts" class="alerts-container"></div>
   <div id="adidasContainer"></div>
@@ -421,7 +465,7 @@
   <div class="card-head" style="margin-bottom:6px;">
     <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
   </div>
-  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
   <div class="filter-bar" data-view="reebok"></div>
   <div id="reebokAlerts" class="alerts-container"></div>
   <div id="reebokContainer"></div>
@@ -447,7 +491,14 @@
   <div class="card">
     <div class="card-head">
       <h2>🔬 Microprocesos y Tareas</h2>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div id="microArrivalStatusWrap" style="display:none;align-items:center;gap:6px;background:#f6f8fc;padding:4px 10px;border-radius:8px;border:1px solid var(--line);">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Estado Arribo CD:</span>
+          <select id="microArrivalStatusSelect" class="arrival-status-select transito">
+            <option value="EN TRÁNSITO">🚚 EN TRÁNSITO</option>
+            <option value="YA ARRIBÓ">✅ YA ARRIBÓ</option>
+          </select>
+        </div>
         <button class="btn" id="btnAddMicro" style="background:var(--navy);color:#fff;">+ Agregar Actividad</button>
       </div>
     </div>
@@ -547,10 +598,10 @@
       <button class="month-btn" data-mes="NOVIEMBRE">NOVIEMBRE</button>
       <button class="month-btn" data-mes="DICIEMBRE">DICIEMBRE</button>
     </div>
-    <div class="resumen-toolbar">
+    <div class="resumen-toolbar" style="margin-top:12px;">
       <div class="dropzone" id="resumenDropzone">
         📤 Arrastra aquí tu archivo Excel (.xlsx), o <b>haz clic para seleccionarlo</b><br>
-        <span style="font-size:11px;">Soporta: OC Consolidada, OC LPN Consolidado, Intercompany y Base Quick. Sincronizado en vivo.</span>
+        <span style="font-size:11px;">Soporta: Packing List LPN Proveedor (deduplicación de cartones), OC Consolidada, OC LPN Consolidado, Intercompany y Base Quick.</span>
         <input type="file" id="resumenFileInput" accept=".xlsx,.xls" multiple style="display:none;">
       </div>
     </div>
@@ -569,6 +620,61 @@
       </table>
     </div>
     <div class="empty" id="emptyResumen" style="display:none;">No hay datos cargados para este mes todavía. Arrastra un archivo Excel arriba para comenzar.</div>
+  </div>
+</div>
+<!-- ============ VIEW: TABLA DE ARRIBOS PARA CD ============ -->
+<div class="view" id="view-arribos_cd">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>🚚 FORM-RM-01-01 · Status de Arribo de Embarques / Órdenes al CD</h2>
+        <span class="muted" style="font-size:12px;">Ordenado cronológicamente por fecha aproximada de arribo al CD. Las unidades y cartones únicos (LPN Proveedor) se sincronizan automáticamente desde la <b>Hoja de Resúmenes</b>.</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="field" style="min-width:120px;">
+          <label>Año</label>
+          <select id="arribosYearSelect"></select>
+        </div>
+        <button class="btn" id="btnExportArribosCD" style="background:var(--ok);color:#fff;margin-top:14px;">⬇ Exportar Tabla CD (Excel)</button>
+      </div>
+    </div>
+    <div class="arribos-wrap">
+      <table class="arribos-table" id="arribosCdTable">
+        <thead>
+          <tr>
+            <th colspan="17">FORM-RM-01-01 · STATUS DE ARRIBO DE EMBARQUE / ÓRDENES AL CENTRO DE DISTRIBUCIÓN</th>
+          </tr>
+          <tr>
+            <th colspan="5">IDENTIFICACIÓN DEL EMBARQUE</th>
+            <th colspan="2" class="grp-zap">ZAPATOS (CALZADO)</th>
+            <th colspan="2" class="grp-rop">ROPA</th>
+            <th colspan="2" class="grp-acc">ACCESORIOS</th>
+            <th rowspan="2">CANTIDAD TOTAL</th>
+            <th rowspan="2">TOTAL CARTONES</th>
+            <th rowspan="2">TOTAL KG. BRUTO</th>
+            <th rowspan="2">TOTAL CUBICAJE (m³)</th>
+            <th rowspan="2">ESTADO</th>
+            <th rowspan="2">NÚMERO DE CONTENEDORES</th>
+          </tr>
+          <tr>
+            <th>FECHA APROX. ARRIBO AL CD</th>
+            <th>TIPO DE ORIGEN / ORDEN</th>
+            <th>EMPRESA</th>
+            <th>MARCA</th>
+            <th>NOMBRE DEL EMBARQUE</th>
+            <th class="grp-zap">UNIDADES</th>
+            <th class="grp-zap">CTNES</th>
+            <th class="grp-rop">UNIDADES</th>
+            <th class="grp-rop">CTNES</th>
+            <th class="grp-acc">UNIDADES</th>
+            <th class="grp-acc">CTNES</th>
+          </tr>
+        </thead>
+        <tbody id="arribosCdTbody"></tbody>
+        <tfoot id="arribosCdTfoot"></tfoot>
+      </table>
+    </div>
+    <div class="empty" id="emptyArribosCD" style="display:none;margin-top:12px;">No hay embarques registrados para el año seleccionado.</div>
   </div>
 </div>
 <footer class="hint no-print">
@@ -594,6 +700,7 @@ let shipmentsRef = null;
 let holidaysRef = null;
 let microRef = null;
 let resumenRef = null;
+let arribosManualRef = null;
 let connectedRef = null;
 function setSyncStatus(mode){
   const dot = document.getElementById("syncDot");
@@ -611,6 +718,7 @@ function saveLocalBackup(){
       holidays: state.holidays,
       microItems: microState.items,
       resumenMonths: resumenState.months,
+      arribosManual: arribosManualState,
       updatedAt: new Date().toISOString()
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
@@ -627,6 +735,7 @@ function loadLocalBackup(){
     if(payload.holidays) state.holidays = payload.holidays;
     if(payload.microItems) microState.items = payload.microItems;
     if(payload.resumenMonths) resumenState.months = payload.resumenMonths;
+    if(payload.arribosManual) Object.assign(arribosManualState, payload.arribosManual);
     return true;
   }catch(e){
     console.error("Error cargando copia local:", e);
@@ -642,6 +751,7 @@ function initFirebase(){
     holidaysRef = db.ref(FIREBASE_PATH + "/holidays");
     microRef = db.ref(FIREBASE_PATH + "/microprocesos");
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
+    arribosManualRef = db.ref(FIREBASE_PATH + "/arribos_cd_manual");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
     
@@ -694,12 +804,25 @@ function initFirebase(){
       document.getElementById("firebaseErrorBanner").style.display = "block";
       setSyncStatus("local");
     });
+
     resumenRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
         resumenState.months = val;
         saveLocalBackup();
         renderResumen();
+        renderArribosCD();
+      }
+    });
+
+    arribosManualRef.on("value",(snap)=>{
+      const val = snap.val();
+      if(val && typeof val === "object"){
+        Object.assign(arribosManualState, val);
+        saveLocalBackup();
+        const ae = document.activeElement;
+        const typing = ae && ae.closest && ae.closest("#arribosCdTbody") && /INPUT|SELECT/.test(ae.tagName);
+        if(!typing) renderArribosCD();
       }
     });
   }catch(err){
@@ -713,6 +836,7 @@ const state = {
   holidays: [],
   editingId: null
 };
+const arribosManualState = {};
 function getShipmentsArray(){
   return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
 }
@@ -722,6 +846,7 @@ function generateId(){
 const RESPONSABLE_HORA = "5:30pm";
 const MARCA_LABELS = {ADIDAS:"ADIDAS", REEBOK:"REEBOK", ADI_RBK:"ADI & RBK"};
 function marcaLabel(marca){ return MARCA_LABELS[marca] || marca; }
+function marcaArriboLabel(marca){ return marca === "ADI_RBK" ? "ADIDAS-RBK" : (marca || "ADIDAS"); }
 const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLIDADO (Salida OTN)"};
 function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
 function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
@@ -875,6 +1000,28 @@ function computeConsolidadoOTN(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
+function getEstimatedCDDate(sh){
+  if(sh.customDates && sh.customDates["ingreso_cd"] && sh.customDates["ingreso_cd"].start){
+    return parseISO(sh.customDates["ingreso_cd"].start);
+  }
+  if(sh.fechaArriboCD){
+    return parseISO(sh.fechaArriboCD);
+  }
+  const acts = computeActivities(sh);
+  const cdAct = acts.find(a => a.key === "ingreso_cd");
+  return cdAct ? cdAct.start : parseISO(sh.fechaInstruccion);
+}
+function getShipmentArrivalStatus(sh){
+  return (sh && sh.estadoArribo === "YA ARRIBÓ") ? "YA ARRIBÓ" : "EN TRÁNSITO";
+}
+function setShipmentArrivalStatus(id, newStatus){
+  const sh = state.shipmentsMap[id];
+  if(!sh) return;
+  sh.estadoArribo = newStatus;
+  saveShipment(id, sh);
+  showToast(newStatus === "YA ARRIBÓ" ? "✅ Embarque marcado como YA ARRIBÓ al CD" : "🚚 Embarque marcado EN TRÁNSITO");
+}
+
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
@@ -1023,7 +1170,6 @@ function renderAlertsUI(alerts){
 
 /* =========================================================
    ALGORITMO DE DISTRIBUCIÓN DE CARRILES (LANES) PARA GANTT
-   Evita que actividades del mismo día o solapadas se monten
 ========================================================= */
 function assignLanes(bars){
   const sorted = [...bars].sort((a,b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime());
@@ -1032,7 +1178,6 @@ function assignLanes(bars){
     let placed = false;
     for(let i=0; i<lanes.length; i++){
       const lastInLane = lanes[i][lanes[i].length - 1];
-      // Si la barra actual comienza después de que terminó la última barra en este carril, no hay colisión
       if(barItem.start.getTime() > lastInLane.end.getTime()){
         lanes[i].push(barItem);
         barItem.lane = i + 1;
@@ -1046,6 +1191,15 @@ function assignLanes(bars){
     }
   });
   return { bars: sorted, maxLanes: Math.max(lanes.length, 1) };
+}
+
+function arrivalSelectHtml(shipmentId, currentStatus){
+  const st = currentStatus === "YA ARRIBÓ" ? "YA ARRIBÓ" : "EN TRÁNSITO";
+  const cls = st === "YA ARRIBÓ" ? "arribo" : "transito";
+  return `<select class="arrival-status-select ${cls}" data-arrival-id="${shipmentId}" title="Cambiar estado de ingreso al CD">
+    <option value="EN TRÁNSITO" ${st==="EN TRÁNSITO"?"selected":""}>🚚 EN TRÁNSITO</option>
+    <option value="YA ARRIBÓ" ${st==="YA ARRIBÓ"?"selected":""}>✅ YA ARRIBÓ</option>
+  </select>`;
 }
 
 function renderShipmentGantt(sh){
@@ -1110,6 +1264,7 @@ function renderShipmentGantt(sh){
     </tr>`;
   }).join("");
   const hasCustomDates = sh.customDates && Object.keys(sh.customDates).length > 0;
+  const arrivalStatus = getShipmentArrivalStatus(sh);
   return `
   <div class="shipment-block">
     <div class="shipment-header">
@@ -1117,6 +1272,7 @@ function renderShipmentGantt(sh){
       <span class="tag-name">${escapeHtml(sh.nombre)}</span>
       <span class="tag-tipo-${sh.tipo}">${tipoLabel(sh.tipo)}</span>
       ${sh.consolidado ? `<span class="tag-consol">${escapeHtml(sh.consolidado)}</span>` : ""}
+      ${arrivalSelectHtml(sh.id, arrivalStatus)}
       <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b></span>
       ${hasCustomDates ? `<button class="btn small ghost" data-action="reset-dates" data-id="${sh.id}" style="color:var(--navy);background:#fff;border-color:#d0d7de;">↺ Restablecer fechas</button>` : ''}
     </div>
@@ -1204,6 +1360,16 @@ function bindGanttDragAndDrop(){
     });
   });
 }
+
+/* Delegación global para cambio de Estado de Arribo (EN TRÁNSITO / YA ARRIBÓ) en cualquier vista */
+document.addEventListener("change", (e)=>{
+  const sel = e.target.closest("select.arrival-status-select[data-arrival-id]");
+  if(!sel) return;
+  const shipmentId = sel.dataset.arrivalId;
+  const newStatus = sel.value;
+  setShipmentArrivalStatus(shipmentId, newStatus);
+});
+
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -1332,6 +1498,7 @@ function renderInputsTable(){
       <td>${s.fechaInstruccion ? fmtDMY(parseISO(s.fechaInstruccion)) : "—"}</td>
       <td>${s.fechaArriboDepco ? fmtDMY(parseISO(s.fechaArriboDepco)) : "—"}</td>
       <td>${s.fechaArriboCD ? fmtDMY(parseISO(s.fechaArriboCD)) : "—"}</td>
+      <td>${arrivalSelectHtml(s.id, getShipmentArrivalStatus(s))}</td>
       <td>
         <button class="btn small" data-action="edit" data-id="${s.id}">✏️ Editar</button>
         <button class="btn small danger" data-action="delete" data-id="${s.id}">🗑️ Eliminar</button>
@@ -1465,6 +1632,7 @@ function renderAll(){
   renderMicroShipmentOptions();
   renderMicroprocesos();
   renderResumen();
+  renderArribosCD();
   checkAllAlerts();
 }
 function showToast(msg, kind){
@@ -1490,6 +1658,7 @@ function pushAllToFirebase(){
   microState.items.forEach(it=>{ if(it && it.id) microObj[it.id] = cleanTaskItem(it); });
   microRef.set(microObj);
   resumenRef.set(resumenState.months);
+  if(arribosManualRef) arribosManualRef.set(arribosManualState);
   showToast("🔄 Datos locales subidos exitosamente a Firebase");
 }
 function saveShipment(id, data){
@@ -1524,8 +1693,9 @@ document.getElementById("btnAddShipment").addEventListener("click", ()=>{
   if(!data.nombre){ alert("Ingresa el nombre del embarque."); return; }
   if(!data.fechaInstruccion){ alert("Ingresa la fecha de instrucción de producto."); return; }
   const id = state.editingId || generateId();
-  if(state.editingId && state.shipmentsMap[id] && state.shipmentsMap[id].customDates){
-    data.customDates = state.shipmentsMap[id].customDates;
+  if(state.editingId && state.shipmentsMap[id]){
+    if(state.shipmentsMap[id].customDates) data.customDates = state.shipmentsMap[id].customDates;
+    if(state.shipmentsMap[id].estadoArribo) data.estadoArribo = state.shipmentsMap[id].estadoArribo;
   }
   saveShipment(id, data);
   clearForm();
@@ -1557,7 +1727,8 @@ document.getElementById("btnExport").addEventListener("click", ()=>{
     shipmentsMap: state.shipmentsMap,
     holidays: state.holidays,
     microItems: microState.items,
-    resumenMonths: resumenState.months
+    resumenMonths: resumenState.months,
+    arribosManual: arribosManualState
   }, null, 2));
   const a = document.createElement('a');
   a.setAttribute("href", dataStr);
@@ -1578,6 +1749,7 @@ document.getElementById("fileImport").addEventListener("change", (e)=>{
       if(imported.holidays) state.holidays = imported.holidays;
       if(imported.microItems) microState.items = imported.microItems;
       if(imported.resumenMonths) resumenState.months = imported.resumenMonths;
+      if(imported.arribosManual) Object.assign(arribosManualState, imported.arribosManual);
       saveLocalBackup();
       pushAllToFirebase();
       renderAll();
@@ -1599,6 +1771,7 @@ document.querySelectorAll(".tab").forEach(tab=>{
     if(tab.dataset.view==="consolidado") renderConsolidated();
     if(tab.dataset.view==="microprocesos") renderMicroprocesos();
     if(tab.dataset.view==="resumen") renderResumen();
+    if(tab.dataset.view==="arribos_cd") renderArribosCD();
     checkAllAlerts();
   });
 });
@@ -1750,9 +1923,29 @@ function dateInputHtml(id, field, value){
 function obsInputHtml(id, field, value){
   return `<input type="text" class="inline-obs" data-id="${id}" data-field="${field}" value="${escapeHtml(value||"")}">`;
 }
+function updateMicroArrivalHeader(sh){
+  const wrap = document.getElementById("microArrivalStatusWrap");
+  const sel = document.getElementById("microArrivalStatusSelect");
+  if(!wrap || !sel) return;
+  if(!sh){
+    wrap.style.display = "none";
+    return;
+  }
+  wrap.style.display = "flex";
+  const st = getShipmentArrivalStatus(sh);
+  sel.value = st;
+  sel.className = "arrival-status-select " + (st === "YA ARRIBÓ" ? "arribo" : "transito");
+}
+document.getElementById("microArrivalStatusSelect").addEventListener("change", (e)=>{
+  if(microState.selectedKey && microState.selectedKey !== INTERCOMPANY_KEY){
+    setShipmentArrivalStatus(microState.selectedKey, e.target.value);
+  }
+});
+
 function renderMicroprocesos(){
   const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
   const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
+  updateMicroArrivalHeader(sh);
   let items = currentSelectionItems();
   const trackMode = items.length>0 ? items[0].trackMode : (sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE");
   renderMicroThead(trackMode);
@@ -1801,9 +1994,6 @@ document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ 
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
 
-/* =========================================================
-   EVENTOS DE MICROPROCESOS: AUTO-FECHA AL COMPLETAR Y EDICIÓN MANUAL
-========================================================= */
 document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
@@ -1817,7 +2007,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
     item[field] = newStatus;
     el.className = "inline-status " + getStatusClass(newStatus);
     
-    // Si se marca como COMPLETO, auto-asignar fecha de hoy si estaba vacía
     if(newStatus === "COMPLETO"){
       let dateField = "fecha";
       if(field === "adidas_status") dateField = "adidas_fecha";
@@ -1845,7 +2034,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
     checkAllAlerts();
     showToast("✅ Cambio guardado");
   } else if(el.classList.contains("inline-fecha")){
-    // Edición manual de fecha (ej. colocar fecha de ayer u otra elegida)
     const newDate = el.value || null;
     item[field] = newDate;
     microSaveField(itemId, field, newDate);
@@ -2041,7 +2229,7 @@ function resolveChannel(raw, allowedList){
 }
 function resolveGrupo(raw){
   const key = normTxt(raw);
-  if(key === "C" || key.startsWith("CALZ") || key.startsWith("FOOTW")) return "Calzado";
+  if(key === "C" || key.startsWith("CALZ") || key.startsWith("ZAP") || key.startsWith("FOOTW")) return "Calzado";
   if(key === "R" || key.startsWith("ROP") || key.startsWith("TEXT") || key.startsWith("APPAR")) return "Ropa";
   if(key === "A" || key.startsWith("ACC") || key.startsWith("HARDW") || key.startsWith("EQUIP")) return "Accesorios";
   return null;
@@ -2095,6 +2283,8 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
       consolidado: (meta && meta.consolidado) || "",
       fechaArriboCD: (meta && meta.fechaArriboCD) || "",
       channels: blankChannels(),
+      cartonesCount: 0,
+      lpnList: [],
       observaciones: ""
     };
     list.push(row);
@@ -2138,6 +2328,91 @@ function cellNum(row, idx){
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
   return isNaN(n) ? 0 : n;
 }
+
+/* =========================================================
+   NUEVO PARSER: PACKING LIST CON LPN PROVEEDOR (DEDUPLICADO)
+   Soporta columnas explícitas GRUPO y MARCA + LPN PROVEEDOR
+========================================================= */
+function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
+  const header = findHeaderRow(aoa, [["LPN PROVEEDOR"], ["EMBARQUE"], ["CANAL", "DESTINO"], ["CANT. EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]]);
+  if(!header) return false;
+  const { rowIndex, colMap } = header;
+  const lpnCol = getColIdx(colMap, ["LPN PROVEEDOR"]);
+  const embCol = getColIdx(colMap, ["EMBARQUE"]);
+  const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["CANT. EMPACADA", "CANT EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+
+  // Inferencia de respaldo si falta marca en alguna fila
+  const fileContext = normTxt((fileName || "") + " " + (sheetName || ""));
+  const fallbackMarca = fileContext.includes("REEBOK") ? "REEBOK" : "ADIDAS";
+
+  // Acumulador temporal por (embarque || marca || grupo) -> set de LPN únicos y unidades por canal
+  const groupAcc = {};
+  const globalUniqueLpns = new Set();
+  let count = 0;
+  let sinGrupo = 0;
+
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const embarque = cellStr(row, embCol);
+    if(!embarque) continue;
+
+    const rawMarca = mrcCol !== undefined ? cellStr(row, mrcCol) : "";
+    const marca = rawMarca ? resolveMarca(rawMarca) : fallbackMarca;
+    const rawGrupo = grpCol !== undefined ? cellStr(row, grpCol) : "";
+    const grupo = resolveGrupo(rawGrupo);
+    const canal = resolveChannel(cellStr(row, cnlCol), null);
+    const cantidad = cellNum(row, qtyCol);
+    const lpn = cellStr(row, lpnCol);
+
+    if(!grupo){
+      if(cantidad > 0 || lpn) sinGrupo++;
+      continue;
+    }
+
+    const key = normTxt(embarque) + "||" + marca + "||" + grupo;
+    if(!groupAcc[key]){
+      groupAcc[key] = {
+        embarque,
+        marca,
+        grupo,
+        lpns: new Set(),
+        channels: {}
+      };
+    }
+    if(lpn){
+      groupAcc[key].lpns.add(lpn);
+      globalUniqueLpns.add(lpn);
+    }
+    if(canal && cantidad !== 0){
+      groupAcc[key].channels[canal] = (groupAcc[key].channels[canal] || 0) + cantidad;
+    }
+    count++;
+  }
+
+  Object.values(groupAcc).forEach(acc => {
+    ensureTriadRows(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, {});
+    const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, acc.grupo, {});
+    Object.keys(acc.channels).forEach(c => {
+      targetRow.channels[c] = (targetRow.channels[c] || 0) + acc.channels[c];
+    });
+    // Combinar LPNs existentes con los nuevos sin duplicar
+    const prevLpns = new Set(Array.isArray(targetRow.lpnList) ? targetRow.lpnList : []);
+    acc.lpns.forEach(l => prevLpns.add(l));
+    targetRow.lpnList = Array.from(prevLpns);
+    targetRow.cartonesCount = targetRow.lpnList.length;
+  });
+
+  let msg = `Packing List LPN: ${count} filas procesadas · ${globalUniqueLpns.size.toLocaleString()} cartones únicos (LPN Proveedor sin duplicados).`;
+  if(sinGrupo > 0){
+    msg += ` (${sinGrupo} filas omitidas por no tener GRUPO válido).`;
+  }
+  log.push({ type: count > 0 ? "ok" : "err", msg });
+  return true;
+}
+
 function tryParseFormatA(aoa, mes, log){
   const header = findHeaderRow(aoa, [["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"], ["CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
@@ -2351,7 +2626,13 @@ function processWorkbook(workbook, mes, fileName, log, ctx){
     const ws = workbook.Sheets[sheetName];
     const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
     if(aoa.length === 0) continue;
-    if(tryParseFormatB(aoa, mes, log) || tryParseFormatC(aoa, mes, log) || tryParseFormatA(aoa, mes, log) || tryParseBaseQuick(aoa, mes, log, ctx)){
+    if(
+      tryParseLpnProveedor(aoa, mes, fileName, sheetName, log) ||
+      tryParseFormatB(aoa, mes, log) ||
+      tryParseFormatC(aoa, mes, log) ||
+      tryParseFormatA(aoa, mes, log) ||
+      tryParseBaseQuick(aoa, mes, log, ctx)
+    ){
       matched = true;
     }
   }
@@ -2381,6 +2662,7 @@ function handleResumenFiles(fileList){
       if(pending === 0){
         resumenSave();
         renderResumen();
+        renderArribosCD();
         showResumenLog(log);
       }
     };
@@ -2636,6 +2918,7 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", () =>
   resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
   resumenSave();
   renderResumen();
+  renderArribosCD();
   showToast("🗑️ Quitado del mes");
 });
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
@@ -2643,6 +2926,7 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
   resumenState.months[resumenState.mes] = [];
   resumenSave();
   renderResumen();
+  renderArribosCD();
   showToast("🧹 Mes limpiado");
 });
 document.getElementById("btnExportResumen").addEventListener("click", () => {
@@ -2651,6 +2935,243 @@ document.getElementById("btnExportResumen").addEventListener("click", () => {
   XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
   showToast("⬇ Archivo Excel exportado");
 });
+
+/* =========================================================
+   TABLA DE ARRIBOS PARA CD (FORM-RM-01-01)
+   Cruza fechas de Tabla de Entradas + cantidades/cartones LPN de Hoja de Resúmenes
+========================================================= */
+function saveArribosManualField(shipmentKey, field, value){
+  if(!arribosManualState[shipmentKey]) arribosManualState[shipmentKey] = {};
+  arribosManualState[shipmentKey][field] = value;
+  saveLocalBackup();
+  if(cloudMode && arribosManualRef){
+    arribosManualRef.child(shipmentKey).child(field).set(value === "" ? null : value).catch(e=>console.warn(e));
+  }
+}
+
+function getResumenStatsForShipment(nombreEmbarque){
+  const target = normTxt(nombreEmbarque);
+  const stats = {
+    zapU: 0, zapC: 0,
+    ropU: 0, ropC: 0,
+    accU: 0, accC: 0
+  };
+  if(!target) return stats;
+
+  const lpnSets = {
+    Calzado: new Set(),
+    Ropa: new Set(),
+    Accesorios: new Set()
+  };
+
+  Object.keys(resumenState.months || {}).forEach(mes => {
+    const rows = resumenState.months[mes] || [];
+    rows.forEach(r => {
+      if(resumenBlockOf(r) !== "INGRESOS EMBARQUE") return;
+      const rName = normTxt(r.embarque);
+      if(!rName) return;
+      if(rName === target || target.includes(rName) || rName.includes(target)){
+        const qty = rowCantidadTotal(r);
+        const lpns = Array.isArray(r.lpnList) ? r.lpnList : [];
+        if(r.grupo === "Calzado"){
+          stats.zapU += qty;
+          if(lpns.length) lpns.forEach(l => lpnSets.Calzado.add(l));
+          else if(r.cartonesCount) stats.zapC += Number(r.cartonesCount) || 0;
+        } else if(r.grupo === "Ropa"){
+          stats.ropU += qty;
+          if(lpns.length) lpns.forEach(l => lpnSets.Ropa.add(l));
+          else if(r.cartonesCount) stats.ropC += Number(r.cartonesCount) || 0;
+        } else if(r.grupo === "Accesorios"){
+          stats.accU += qty;
+          if(lpns.length) lpns.forEach(l => lpnSets.Accesorios.add(l));
+          else if(r.cartonesCount) stats.accC += Number(r.cartonesCount) || 0;
+        }
+      }
+    });
+  });
+
+  if(lpnSets.Calzado.size > 0) stats.zapC = lpnSets.Calzado.size;
+  if(lpnSets.Ropa.size > 0) stats.ropC = lpnSets.Ropa.size;
+  if(lpnSets.Accesorios.size > 0) stats.accC = lpnSets.Accesorios.size;
+  return stats;
+}
+
+function populateArribosYearSelect(){
+  const sel = document.getElementById("arribosYearSelect");
+  if(!sel) return;
+  const yearsSet = new Set([new Date().getFullYear()]);
+  getShipmentsArray().forEach(sh => {
+    const cd = getEstimatedCDDate(sh);
+    if(cd) yearsSet.add(cd.getFullYear());
+  });
+  const years = Array.from(yearsSet).sort((a,b)=>a-b);
+  const prev = sel.value;
+  sel.innerHTML = `<option value="0">TODOS LOS AÑOS</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(prev && Array.from(sel.options).some(o=>o.value===prev)) sel.value = prev;
+  else sel.value = String(new Date().getFullYear());
+}
+
+function renderArribosCD(){
+  populateArribosYearSelect();
+  const sel = document.getElementById("arribosYearSelect");
+  const filterYear = sel ? Number(sel.value) : 0;
+  const tbody = document.getElementById("arribosCdTbody");
+  const tfoot = document.getElementById("arribosCdTfoot");
+  const emptyEl = document.getElementById("emptyArribosCD");
+  if(!tbody || !tfoot) return;
+
+  // Ordenar embarques cronológicamente por fecha de arribo al CD
+  const enriched = getShipmentsArray().map(sh => {
+    const cdDate = getEstimatedCDDate(sh);
+    return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
+  }).filter(item => {
+    if(!filterYear) return true;
+    return item.cdDate && item.cdDate.getFullYear() === filterYear;
+  }).sort((a,b) => a.cdTime - b.cdTime);
+
+  if(enriched.length === 0){
+    tbody.innerHTML = "";
+    tfoot.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+
+  let sumZapU = 0, sumZapC = 0, sumRopU = 0, sumRopC = 0, sumAccU = 0, sumAccC = 0;
+  let sumTotU = 0, sumTotC = 0, sumKg = 0, sumCbm = 0;
+
+  tbody.innerHTML = enriched.map(({ sh, cdDate }) => {
+    const stats = getResumenStatsForShipment(sh.nombre);
+    const totU = stats.zapU + stats.ropU + stats.accU;
+    const totC = stats.zapC + stats.ropC + stats.accC;
+    const manual = arribosManualState[sh.id] || {};
+    const kgVal = manual.kgBruto !== undefined && manual.kgBruto !== null ? manual.kgBruto : "";
+    const cbmVal = manual.cubicaje !== undefined && manual.cubicaje !== null ? manual.cubicaje : "";
+    const contVal = manual.contenedores !== undefined && manual.contenedores !== null ? manual.contenedores : "";
+
+    sumZapU += stats.zapU; sumZapC += stats.zapC;
+    sumRopU += stats.ropU; sumRopC += stats.ropC;
+    sumAccU += stats.accU; sumAccC += stats.accC;
+    sumTotU += totU; sumTotC += totC;
+    sumKg += parseFloat(kgVal) || 0;
+    sumCbm += parseFloat(cbmVal) || 0;
+
+    return `
+      <tr>
+        <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
+        <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? "CONSOLIDADO" : sh.tipo)}</span></td>
+        <td><b>MEDEPORT</b></td>
+        <td><span class="pill badge-marca-${sh.marca}">${escapeHtml(marcaArriboLabel(sh.marca))}</span></td>
+        <td class="emb-name-cell">${escapeHtml(sh.nombre)}</td>
+        <td>${stats.zapU ? stats.zapU.toLocaleString() : 0}</td>
+        <td>${stats.zapC ? stats.zapC.toLocaleString() : 0}</td>
+        <td>${stats.ropU ? stats.ropU.toLocaleString() : 0}</td>
+        <td>${stats.ropC ? stats.ropC.toLocaleString() : 0}</td>
+        <td>${stats.accU ? stats.accU.toLocaleString() : 0}</td>
+        <td>${stats.accC ? stats.accC.toLocaleString() : 0}</td>
+        <td class="tot-bold">${totU.toLocaleString()}</td>
+        <td class="tot-bold">${totC.toLocaleString()}</td>
+        <td><input type="number" step="0.01" class="arribos-input" data-shid="${sh.id}" data-field="kgBruto" placeholder="0.00" value="${escapeHtml(String(kgVal))}"></td>
+        <td><input type="number" step="0.01" class="arribos-input" data-shid="${sh.id}" data-field="cubicaje" placeholder="0.00" value="${escapeHtml(String(cbmVal))}"></td>
+        <td>${arrivalSelectHtml(sh.id, getShipmentArrivalStatus(sh))}</td>
+        <td><input type="text" class="arribos-input wide" data-shid="${sh.id}" data-field="contenedores" placeholder="Ej. 3 x 40 HC" value="${escapeHtml(String(contVal))}"></td>
+      </tr>
+    `;
+  }).join("");
+
+  tfoot.innerHTML = `
+    <tr>
+      <td colspan="5" style="text-align:right;">TOTAL CONSOLIDADO (${enriched.length} embarques):</td>
+      <td>${sumZapU.toLocaleString()}</td>
+      <td>${sumZapC.toLocaleString()}</td>
+      <td>${sumRopU.toLocaleString()}</td>
+      <td>${sumRopC.toLocaleString()}</td>
+      <td>${sumAccU.toLocaleString()}</td>
+      <td>${sumAccC.toLocaleString()}</td>
+      <td>${sumTotU.toLocaleString()}</td>
+      <td>${sumTotC.toLocaleString()}</td>
+      <td>${sumKg.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:2})}</td>
+      <td>${sumCbm.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
+
+document.getElementById("arribosYearSelect").addEventListener("change", renderArribosCD);
+
+document.getElementById("arribosCdTbody").addEventListener("change", (e)=>{
+  const inp = e.target.closest("input.arribos-input");
+  if(!inp) return;
+  const shId = inp.dataset.shid;
+  const field = inp.dataset.field;
+  const val = inp.value.trim();
+  saveArribosManualField(shId, field, val);
+  renderArribosCD();
+  showToast("💾 Dato logístico guardado");
+});
+
+document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
+  const sel = document.getElementById("arribosYearSelect");
+  const filterYear = sel ? Number(sel.value) : 0;
+  const enriched = getShipmentsArray().map(sh => {
+    const cdDate = getEstimatedCDDate(sh);
+    return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
+  }).filter(item => !filterYear || (item.cdDate && item.cdDate.getFullYear() === filterYear))
+    .sort((a,b) => a.cdTime - b.cdTime);
+
+  const aoa = [
+    ["FORM-RM-01-01 STATUS DE ARRIBO DE EMBARQUE/ORDENES"],
+    ["STATUS DE ARRIBO DE EMBARQUE/ORDENES"],
+    ["NOMBRE DE LA EMPRESA", "", "", "", "", "ZAPATOS", "", "ROPA", "", "ACCESORIOS", "", "Cantidad Total", "Total Cartones", "Total KG. BRUTO", "Total CUBICAJE", "ESTADO", ""],
+    [],
+    ["FECHA APROX DE ARRIBO AL CD", "TIPO DE ORIGEN / ORDEN", "EMPRESA", "MARCA", "NOMBRE DEL EMBARQUE", "UNIDADES", "CTNES", "UNIDADES", "CTNES", "UNIDADES", "CTNES", "", "", "", "", "", "NUMERO DE CONTENEDORES"]
+  ];
+
+  enriched.forEach(({ sh, cdDate }) => {
+    const stats = getResumenStatsForShipment(sh.nombre);
+    const totU = stats.zapU + stats.ropU + stats.accU;
+    const totC = stats.zapC + stats.ropC + stats.accC;
+    const manual = arribosManualState[sh.id] || {};
+    aoa.push([
+      cdDate ? fmtDMY(cdDate) : "",
+      sh.tipo === "CONSOLIDADO_OTN" ? "CONSOLIDADO" : sh.tipo,
+      "MEDEPORT",
+      marcaArriboLabel(sh.marca),
+      sh.nombre,
+      stats.zapU || 0,
+      stats.zapC || 0,
+      stats.ropU || 0,
+      stats.ropC || 0,
+      stats.accU || 0,
+      stats.accC || 0,
+      totU,
+      totC,
+      manual.kgBruto ? Number(manual.kgBruto) : "",
+      manual.cubicaje ? Number(manual.cubicaje) : "",
+      getShipmentArrivalStatus(sh),
+      manual.contenedores || ""
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!merges"] = [
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+    { s: { r: 2, c: 0 }, e: { r: 3, c: 4 } },
+    { s: { r: 2, c: 5 }, e: { r: 3, c: 6 } },
+    { s: { r: 2, c: 7 }, e: { r: 3, c: 8 } },
+    { s: { r: 2, c: 9 }, e: { r: 3, c: 10 } },
+    { s: { r: 2, c: 11 }, e: { r: 4, c: 11 } },
+    { s: { r: 2, c: 12 }, e: { r: 4, c: 12 } },
+    { s: { r: 2, c: 13 }, e: { r: 4, c: 13 } },
+    { s: { r: 2, c: 14 }, e: { r: 4, c: 14 } },
+    { s: { r: 2, c: 15 }, e: { r: 4, c: 15 } }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ARRIBOS_CD");
+  XLSX.writeFile(wb, `Tabla_Arribos_CD_${filterYear || "TODOS"}.xlsx`);
+  showToast("⬇ Tabla de Arribos CD exportada a Excel");
+});
+
 /* =========================================================
    INICIALIZACIÓN
 ========================================================= */
