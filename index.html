@@ -133,7 +133,6 @@
     color:#856404 !important;
     border:1px solid #ffeeba !important;
   }
-
   /* SELECTOR DE ESTADO DE ARRIBO (EN TRÁNSITO / YA ARRIBÓ) */
   select.arrival-status-select{
     font-weight:800;
@@ -153,7 +152,6 @@
     color:#155724 !important;
     border:1px solid #c3e6cb !important;
   }
-
   /* ALERTAS BANNER */
   .alerts-container{margin-bottom:16px;}
   .alert-banner{
@@ -302,7 +300,6 @@
   .kpi-card.reebok{border-left:4px solid #0d4a8c;}
   .kpi-card.total{border-left:4px solid var(--ok);}
   .kpi-card.top{border-left:4px solid var(--accent);}
-
   .resumen-controls-bar{
     display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;
     margin:12px 0;padding:10px 12px;background:#f6f8fc;border:1px solid var(--line);border-radius:8px;
@@ -313,7 +310,6 @@
     padding:6px 11px;border-radius:7px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;user-select:none;
   }
   .toggle-pill input{margin:0;cursor:pointer;}
-
   .resumen-table-wrap{overflow:auto;max-height:74vh;border:1px solid #d0d7de;border-radius:8px;box-shadow:var(--shadow);background:#fff;}
   table.resumen-table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;color:#1c2333;}
   table.resumen-table th, table.resumen-table td{
@@ -331,7 +327,6 @@
   th.fam-digital{background:#5B9BD5 !important;color:#fff !important;}
   th.fam-mayor{background:#C55A11 !important;color:#fff !important;}
   th.fam-bodega{background:#548235 !important;color:#fff !important;}
-
   /* Solo 3 columnas fijas a la izquierda */
   table.resumen-table .stk-emb{position:sticky;left:0;width:230px;min-width:230px;max-width:230px;z-index:9;white-space:normal;}
   table.resumen-table .stk-mrc{position:sticky;left:230px;width:90px;min-width:90px;max-width:90px;z-index:9;text-align:center;}
@@ -339,7 +334,6 @@
   table.resumen-table thead th.stk-emb,
   table.resumen-table thead th.stk-mrc,
   table.resumen-table thead th.stk-grp{z-index:20;}
-
   /* Franja separadora de sección (Ingresos / Intercompanies / Base Quick) */
   tr.section-banner-row td{
     background:#e9eef7;color:var(--navy);font-weight:800;font-size:11.5px;letter-spacing:.5px;
@@ -351,7 +345,6 @@
   tr.emb-data-row:hover td{background:#edf4ff !important;}
   tr.emb-sub-row td{font-size:11.5px;color:#3a4360;}
   tr.emb-sub-row td.stk-grp{padding-left:22px;}
-
   .emb-title-box{display:flex;flex-direction:column;gap:3px;text-align:left;}
   .emb-title-top{display:flex;align-items:center;justify-content:space-between;gap:6px;}
   .emb-name-txt{font-weight:800;color:var(--navy);font-size:12px;}
@@ -362,7 +355,6 @@
     padding:2px 7px;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;
   }
   .btn-expand-grp:hover{background:var(--navy);color:#fff;}
-
   td.total-cell{font-weight:800;text-align:center;color:#c00000;background:rgba(192,0,0,.03) !important;}
   td.channel-val{text-align:center;font-variant-numeric:tabular-nums;min-width:72px;}
   tr.totals-group-row td{background:#f4f7fc;font-weight:600;}
@@ -374,7 +366,6 @@
   tr.pct-row td{background:#eef3fb !important;font-weight:700;border-top:1px solid #b9c3dd;}
   tr.pct-row td.pct-label{text-align:center;background:#d9e1f2 !important;color:#1c2333;}
   tr.pct-row td.pct-val{text-align:center;font-variant-numeric:tabular-nums;color:#1c2333;}
-
   /* ---------- TABLA DE ARRIBOS PARA CD (FORM-RM-01-01) ---------- */
   .arribos-wrap{overflow:auto;max-height:75vh;border:1px solid #d0d7de;border-radius:8px;box-shadow:var(--shadow);background:#fff;}
   table.arribos-table{border-collapse:separate;border-spacing:0;min-width:1550px;font-size:12px;color:#1c2333;}
@@ -477,13 +468,14 @@
   </div>
   <div class="card">
     <div class="card-head"><h2>Embarques registrados</h2><span class="muted" id="countShipments">0 embarques</span></div>
+    <p class="muted" style="margin:0 0 8px 0;font-size:11.5px;">Filtro por mes/año vinculado a la <b>fecha aproximada de arribo al CD</b>.</p>
     <div class="filter-bar" data-view="inputs"></div>
     <div style="overflow-x:auto;">
       <table>
         <thead>
           <tr>
             <th>Marca</th><th>Embarque</th><th>Tipo</th><th>Consolidado</th>
-            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD</th><th>Estado CD</th><th>Acciones</th>
+            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD (Aprox.)</th><th>Estado CD</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody id="shipmentsTbody"></tbody>
@@ -502,7 +494,7 @@
   <div class="card-head" style="margin-bottom:6px;">
     <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
   </div>
-  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b> (filtrados por mes de arribo aproximado al CD). Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
   <div class="filter-bar" data-view="adidas"></div>
   <div id="adidasAlerts" class="alerts-container"></div>
   <div id="adidasContainer"></div>
@@ -512,7 +504,7 @@
   <div class="card-head" style="margin-bottom:6px;">
     <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
   </div>
-  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b> (filtrados por mes de arribo aproximado al CD). Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día y actualizar el estado de arribo al CD.</p>
   <div class="filter-bar" data-view="reebok"></div>
   <div id="reebokAlerts" class="alerts-container"></div>
   <div id="reebokContainer"></div>
@@ -523,7 +515,7 @@
     <div class="card-head">
       <h2>📊 Resumen consolidado del mes</h2>
       <div class="month-picker">
-        <label class="muted" style="font-size:12px;">Mes:</label>
+        <label class="muted" style="font-size:12px;">Mes calendario Gantt:</label>
         <select id="monthPicker"></select>
       </div>
     </div>
@@ -550,12 +542,12 @@
       </div>
     </div>
     <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
-      Cada embarque de la <b>Tabla de Entradas</b> genera su propio checklist sincronizado en la nube para todo el equipo.
+      Cada embarque de la <b>Tabla de Entradas</b> genera su propio checklist sincronizado en la nube. Los filtros por año/mes corresponden a la <b>fecha aproximada de arribo al CD</b>.
     </p>
     <div class="filter-bar" data-view="microprocesos"></div>
     <div id="microAlerts" class="alerts-container"></div>
     <div class="micro-filters">
-      <div class="field" style="min-width:280px;">
+      <div class="field" style="min-width:310px;">
         <label>Embarque</label>
         <select id="microShipmentSelect"></select>
       </div>
@@ -631,13 +623,22 @@
 <div class="view" id="view-resumen">
   <div class="card">
     <div class="card-head">
-      <h2>📑 Hoja de Resúmenes Sintetizada</h2>
+      <div>
+        <h2>📑 Hoja de Resúmenes Sintetizada</h2>
+        <span class="muted" style="font-size:12px;">Los embarques registrados se agrupan automáticamente según el <b>mes aproximado de arribo al CD</b>.</span>
+      </div>
       <div class="resumen-actions">
         <button class="btn" id="btnExportResumen" style="background:var(--ok);color:#fff;">⬇ Exportar mes a Excel</button>
         <button class="btn ghost" id="btnClearResumenMonth" style="background:#eee;color:var(--danger);">🧹 Limpiar mes</button>
       </div>
     </div>
     <div class="month-tabs" id="resumenMonthTabs">
+      <button class="month-btn" data-mes="ENERO">ENERO</button>
+      <button class="month-btn" data-mes="FEBRERO">FEBRERO</button>
+      <button class="month-btn" data-mes="MARZO">MARZO</button>
+      <button class="month-btn" data-mes="ABRIL">ABRIL</button>
+      <button class="month-btn" data-mes="MAYO">MAYO</button>
+      <button class="month-btn" data-mes="JUNIO">JUNIO</button>
       <button class="month-btn active" data-mes="JULIO">JULIO</button>
       <button class="month-btn" data-mes="AGOSTO">AGOSTO</button>
       <button class="month-btn" data-mes="SEPTIEMBRE">SEPTIEMBRE</button>
@@ -653,10 +654,8 @@
       </div>
     </div>
     <div class="import-log" id="resumenImportLog" style="display:none;"></div>
-
     <!-- Tarjetas KPI superiores -->
     <div class="resumen-kpis" id="resumenKpis"></div>
-
     <!-- Barra de controles: quitar embarque + filtros visuales -->
     <div class="resumen-controls-bar">
       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
@@ -673,14 +672,13 @@
         </label>
       </div>
     </div>
-
     <div class="resumen-table-wrap">
       <table class="resumen-table" id="resumenTable">
         <thead id="resumenThead"></thead>
         <tbody id="resumenTbody"></tbody>
       </table>
     </div>
-    <div class="empty" id="emptyResumen" style="display:none;">No hay datos cargados para este mes todavía. Arrastra un archivo Excel arriba para comenzar.</div>
+    <div class="empty" id="emptyResumen" style="display:none;">No hay datos cargados con arribo al CD para este mes todavía. Arrastra un archivo Excel arriba para comenzar.</div>
   </div>
 </div>
 <!-- ============ VIEW: TABLA DE ARRIBOS PARA CD ============ -->
@@ -689,12 +687,30 @@
     <div class="card-head">
       <div>
         <h2>🚚 Status de Arribo de Embarques / Órdenes al CD</h2>
-        <span class="muted" style="font-size:12px;">Ordenado cronológicamente por fecha aproximada de arribo al CD. Las unidades y cartones únicos (LPN Proveedor) se sincronizan automáticamente desde la <b>Hoja de Resúmenes</b>.</span>
+        <span class="muted" style="font-size:12px;">Ordenado cronológicamente y filtrado por mes/año de <b>fecha aproximada de arribo al CD</b>. Las unidades y cartones únicos (LPN Proveedor) se sincronizan automáticamente desde la <b>Hoja de Resúmenes</b>.</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <div class="field" style="min-width:120px;">
-          <label>Año</label>
+        <div class="field" style="min-width:130px;">
+          <label>Año (Arribo CD)</label>
           <select id="arribosYearSelect"></select>
+        </div>
+        <div class="field" style="min-width:165px;">
+          <label>Mes (Arribo CD)</label>
+          <select id="arribosMonthSelect">
+            <option value="0">TODOS LOS MESES</option>
+            <option value="1">ENERO</option>
+            <option value="2">FEBRERO</option>
+            <option value="3">MARZO</option>
+            <option value="4">ABRIL</option>
+            <option value="5">MAYO</option>
+            <option value="6">JUNIO</option>
+            <option value="7">JULIO</option>
+            <option value="8">AGOSTO</option>
+            <option value="9">SEPTIEMBRE</option>
+            <option value="10">OCTUBRE</option>
+            <option value="11">NOVIEMBRE</option>
+            <option value="12">DICIEMBRE</option>
+          </select>
         </div>
         <button class="btn" id="btnExportArribosCD" style="background:var(--ok);color:#fff;margin-top:14px;">⬇ Exportar Tabla CD (Excel)</button>
       </div>
@@ -735,7 +751,7 @@
         <tfoot id="arribosCdTfoot"></tfoot>
       </table>
     </div>
-    <div class="empty" id="emptyArribosCD" style="display:none;margin-top:12px;">No hay embarques registrados para el año seleccionado.</div>
+    <div class="empty" id="emptyArribosCD" style="display:none;margin-top:12px;">No hay embarques registrados con fecha aproximada de arribo al CD para el año/mes seleccionado.</div>
   </div>
 </div>
 <footer class="hint no-print">
@@ -795,7 +811,7 @@ function loadLocalBackup(){
     if(payload.shipmentsMap) state.shipmentsMap = payload.shipmentsMap;
     if(payload.holidays) state.holidays = payload.holidays;
     if(payload.microItems) microState.items = payload.microItems;
-    if(payload.resumenMonths) resumenState.months = payload.resumenMonths;
+    if(payload.resumenMonths) Object.assign(resumenState.months, payload.resumenMonths);
     if(payload.arribosManual) Object.assign(arribosManualState, payload.arribosManual);
     return true;
   }catch(e){
@@ -865,17 +881,16 @@ function initFirebase(){
       document.getElementById("firebaseErrorBanner").style.display = "block";
       setSyncStatus("local");
     });
-
     resumenRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
-        resumenState.months = val;
+        RESUMEN_MESES.forEach(m => { resumenState.months[m] = []; });
+        Object.assign(resumenState.months, val);
         saveLocalBackup();
         renderResumen();
         renderArribosCD();
       }
     });
-
     arribosManualRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
@@ -1062,6 +1077,7 @@ function computeConsolidadoOTN(sh, d0){
   return applyCustomDates(sh, defaultBars);
 }
 function getEstimatedCDDate(sh){
+  if(!sh) return null;
   if(sh.customDates && sh.customDates["ingreso_cd"] && sh.customDates["ingreso_cd"].start){
     return parseISO(sh.customDates["ingreso_cd"].start);
   }
@@ -1082,7 +1098,6 @@ function setShipmentArrivalStatus(id, newStatus){
   saveShipment(id, sh);
   showToast(newStatus === "YA ARRIBÓ" ? "✅ Embarque marcado como YA ARRIBÓ al CD" : "🚚 Embarque marcado EN TRÁNSITO");
 }
-
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
@@ -1228,7 +1243,6 @@ function renderAlertsUI(alerts){
     microAlertsEl.innerHTML = buildBanner(alertsFor("microprocesos", alerts), "Pendientes Críticos según Cronograma Gantt");
   }
 }
-
 /* =========================================================
    ALGORITMO DE DISTRIBUCIÓN DE CARRILES (LANES) PARA GANTT
 ========================================================= */
@@ -1253,7 +1267,6 @@ function assignLanes(bars){
   });
   return { bars: sorted, maxLanes: Math.max(lanes.length, 1) };
 }
-
 function arrivalSelectHtml(shipmentId, currentStatus){
   const st = currentStatus === "YA ARRIBÓ" ? "YA ARRIBÓ" : "EN TRÁNSITO";
   const cls = st === "YA ARRIBÓ" ? "arribo" : "transito";
@@ -1262,7 +1275,6 @@ function arrivalSelectHtml(shipmentId, currentStatus){
     <option value="YA ARRIBÓ" ${st==="YA ARRIBÓ"?"selected":""}>✅ YA ARRIBÓ</option>
   </select>`;
 }
-
 function renderShipmentGantt(sh){
   const acts = computeActivities(sh);
   if(acts.length === 0){
@@ -1326,6 +1338,7 @@ function renderShipmentGantt(sh){
   }).join("");
   const hasCustomDates = sh.customDates && Object.keys(sh.customDates).length > 0;
   const arrivalStatus = getShipmentArrivalStatus(sh);
+  const cdDateEst = getEstimatedCDDate(sh);
   return `
   <div class="shipment-block">
     <div class="shipment-header">
@@ -1334,7 +1347,7 @@ function renderShipmentGantt(sh){
       <span class="tag-tipo-${sh.tipo}">${tipoLabel(sh.tipo)}</span>
       ${sh.consolidado ? `<span class="tag-consol">${escapeHtml(sh.consolidado)}</span>` : ""}
       ${arrivalSelectHtml(sh.id, arrivalStatus)}
-      <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b></span>
+      <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b> · Arribo CD (aprox.): <b>${cdDateEst ? fmtDMY(cdDateEst) : "—"}</b></span>
       ${hasCustomDates ? `<button class="btn small ghost" data-action="reset-dates" data-id="${sh.id}" style="color:var(--navy);background:#fff;border-color:#d0d7de;">↺ Restablecer fechas</button>` : ''}
     </div>
     <div class="gantt-scroll">
@@ -1357,10 +1370,14 @@ function escapeHtml(s){
 function renderBrandView(marca, containerId){
   const container = document.getElementById(containerId);
   const vk = marca==="ADIDAS" ? "adidas" : "reebok";
-  const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca) && shipmentMatchesFilter(vk,s)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca) && shipmentMatchesFilter(vk,s)).sort((a,b)=>{
+    const da = getEstimatedCDDate(a);
+    const db = getEstimatedCDDate(b);
+    return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+  });
   if(list.length===0){
     container.innerHTML = isFilterActive(vk)
-      ? `<div class="empty">No hay embarques de ${marcaLabel(marca)} con fecha de instrucción en el mes/año seleccionado.</div>`
+      ? `<div class="empty">No hay embarques de ${marcaLabel(marca)} con fecha aproximada de arribo al CD en el mes/año seleccionado.</div>`
       : `<div class="empty">No hay embarques de ${marcaLabel(marca)} registrados.</div>`;
     return;
   }
@@ -1421,7 +1438,6 @@ function bindGanttDragAndDrop(){
     });
   });
 }
-
 /* Delegación global para cambio de Estado de Arribo (EN TRÁNSITO / YA ARRIBÓ) en cualquier vista */
 document.addEventListener("change", (e)=>{
   const sel = e.target.closest("select.arrival-status-select[data-arrival-id]");
@@ -1430,7 +1446,6 @@ document.addEventListener("change", (e)=>{
   const newStatus = sel.value;
   setShipmentArrivalStatus(shipmentId, newStatus);
 });
-
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -1536,7 +1551,11 @@ function renderInputsTable(){
   const emptyEl = document.getElementById("emptyShipments");
   if(!tbody) return;
   const all = getShipmentsArray();
-  const list = all.filter(s=>shipmentMatchesFilter("inputs", s));
+  const list = all.filter(s=>shipmentMatchesFilter("inputs", s)).sort((a,b)=>{
+    const da = getEstimatedCDDate(a);
+    const db = getEstimatedCDDate(b);
+    return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+  });
   document.getElementById("countShipments").textContent = isFilterActive("inputs")
     ? `${list.length} de ${all.length} embarque(s)` : `${list.length} embarque(s)`;
   if(list.length===0){
@@ -1544,13 +1563,16 @@ function renderInputsTable(){
     if(emptyEl){
       emptyEl.textContent = all.length===0
         ? "Aún no hay embarques. Agrega el primero con el formulario de arriba."
-        : "No hay embarques con fecha de instrucción en el mes/año seleccionado.";
+        : "No hay embarques con fecha aproximada de arribo al CD en el mes/año seleccionado.";
       emptyEl.style.display = "block";
     }
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
-  tbody.innerHTML = list.map(s=>`
+  tbody.innerHTML = list.map(s=>{
+    const cdEst = getEstimatedCDDate(s);
+    const cdLabel = cdEst ? fmtDMY(cdEst) + (!s.fechaArriboCD && !(s.customDates && s.customDates["ingreso_cd"]) ? ' <span class="muted" style="font-size:10.5px;">(calc.)</span>' : '') : "—";
+    return `
     <tr>
       <td><span class="pill badge-marca-${s.marca}">${marcaLabel(s.marca)}</span></td>
       <td><b>${escapeHtml(s.nombre)}</b></td>
@@ -1558,14 +1580,14 @@ function renderInputsTable(){
       <td>${escapeHtml(s.consolidado||"N/A")}</td>
       <td>${s.fechaInstruccion ? fmtDMY(parseISO(s.fechaInstruccion)) : "—"}</td>
       <td>${s.fechaArriboDepco ? fmtDMY(parseISO(s.fechaArriboDepco)) : "—"}</td>
-      <td>${s.fechaArriboCD ? fmtDMY(parseISO(s.fechaArriboCD)) : "—"}</td>
+      <td><b>${cdLabel}</b></td>
       <td>${arrivalSelectHtml(s.id, getShipmentArrivalStatus(s))}</td>
       <td>
         <button class="btn small" data-action="edit" data-id="${s.id}">✏️ Editar</button>
         <button class="btn small danger" data-action="delete" data-id="${s.id}">🗑️ Eliminar</button>
       </td>
     </tr>
-  `).join("");
+  `}).join("");
 }
 function readForm(){
   return {
@@ -1617,17 +1639,18 @@ function isFilterActive(viewKey){
 function shipmentMatchesFilter(viewKey, sh){
   const f = viewFilters[viewKey];
   if(!f || (!f.year && !f.month)) return true;
-  const m = /^(\d{4})-(\d{2})/.exec((sh && sh.fechaInstruccion) || "");
-  if(!m) return false;
-  if(f.year && Number(m[1]) !== f.year) return false;
-  if(f.month && Number(m[2]) !== f.month) return false;
+  if(!sh) return false;
+  const cdDate = getEstimatedCDDate(sh);
+  if(!cdDate || isNaN(cdDate.getTime())) return false;
+  if(f.year && cdDate.getFullYear() !== f.year) return false;
+  if(f.month && (cdDate.getMonth() + 1) !== f.month) return false;
   return true;
 }
 function getFilterYears(){
   const set = new Set();
   Object.values(state.shipmentsMap || {}).forEach(sh=>{
-    const m = /^(\d{4})-/.exec((sh && sh.fechaInstruccion) || "");
-    if(m) set.add(Number(m[1]));
+    const cdDate = getEstimatedCDDate(sh);
+    if(cdDate && !isNaN(cdDate.getTime())) set.add(cdDate.getFullYear());
   });
   return Array.from(set).sort((a,b)=>a-b);
 }
@@ -1657,7 +1680,10 @@ function applyViewFilter(viewKey){
     if(f.month){
       let y = f.year;
       if(!y){
-        const ys = getShipmentsArray().map(sh=>/^(\d{4})-(\d{2})/.exec(sh.fechaInstruccion||"")).filter(m=>m && Number(m[2])===f.month).map(m=>Number(m[1]));
+        const ys = getShipmentsArray()
+          .map(sh => getEstimatedCDDate(sh))
+          .filter(cd => cd && (cd.getMonth() + 1) === f.month)
+          .map(cd => cd.getFullYear());
         y = ys.length ? Math.max(...ys) : 0;
       }
       if(y){
@@ -1669,7 +1695,10 @@ function applyViewFilter(viewKey){
     }
     renderConsolidated();
   }
-  else if(viewKey === "microprocesos"){ renderMicroShipmentOptions(); renderMicroprocesos(); }
+  else if(viewKey === "microprocesos"){
+    renderMicroShipmentOptions(true);
+    renderMicroprocesos();
+  }
   checkAllAlerts();
 }
 document.addEventListener("click",(e)=>{
@@ -1809,7 +1838,7 @@ document.getElementById("fileImport").addEventListener("change", (e)=>{
       if(imported.shipmentsMap) state.shipmentsMap = imported.shipmentsMap;
       if(imported.holidays) state.holidays = imported.holidays;
       if(imported.microItems) microState.items = imported.microItems;
-      if(imported.resumenMonths) resumenState.months = imported.resumenMonths;
+      if(imported.resumenMonths) Object.assign(resumenState.months, imported.resumenMonths);
       if(imported.arribosManual) Object.assign(arribosManualState, imported.arribosManual);
       saveLocalBackup();
       pushAllToFirebase();
@@ -1838,7 +1867,6 @@ document.querySelectorAll(".tab").forEach(tab=>{
 });
 document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
-
 /* =========================================================
    MICROPROCESOS (CON COLORES DINÁMICOS Y AUTO-FECHA)
 ========================================================= */
@@ -1936,16 +1964,31 @@ function isItemComplete(item){
   if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO" || item.reebok_status==="N/A";
   return item.status === "COMPLETO" || item.status === "N/A";
 }
-function renderMicroShipmentOptions(){
+function renderMicroShipmentOptions(preferFilteredShipment){
   const sel = document.getElementById("microShipmentSelect");
   if(!sel) return;
   const prev = microState.selectedKey;
-  const list = getShipmentsArray().filter(s=> TASK_TEMPLATES[s.tipo] && shipmentMatchesFilter("microprocesos", s)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  const list = getShipmentsArray()
+    .filter(s=> TASK_TEMPLATES[s.tipo] && shipmentMatchesFilter("microprocesos", s))
+    .sort((a,b)=> {
+      const da = getEstimatedCDDate(a);
+      const db = getEstimatedCDDate(b);
+      return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+    });
   let html = `<option value="${INTERCOMPANY_KEY}">🔗 Intercompany (general)</option>`;
-  html += list.map(s=> `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}</option>`).join("");
+  html += list.map(s=> {
+    const cd = getEstimatedCDDate(s);
+    const cdTxt = cd ? ` · CD: ${fmtDMY(cd)}` : "";
+    return `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}${cdTxt}</option>`;
+  }).join("");
   sel.innerHTML = html;
-  if(prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) sel.value = prev;
-  else sel.value = (isFilterActive("microprocesos") && list.length) ? list[0].id : INTERCOMPANY_KEY;
+  if(preferFilteredShipment && isFilterActive("microprocesos") && list.length && prev === INTERCOMPANY_KEY){
+    sel.value = list[0].id;
+  } else if(prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)){
+    sel.value = prev;
+  } else {
+    sel.value = (isFilterActive("microprocesos") && list.length) ? list[0].id : INTERCOMPANY_KEY;
+  }
   microState.selectedKey = sel.value;
 }
 function currentSelectionItems(){
@@ -2002,7 +2045,6 @@ document.getElementById("microArrivalStatusSelect").addEventListener("change", (
     setShipmentArrivalStatus(microState.selectedKey, e.target.value);
   }
 });
-
 function renderMicroprocesos(){
   const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
   const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
@@ -2054,7 +2096,6 @@ function renderMicroprocesos(){
 document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
-
 document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
@@ -2062,7 +2103,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   const field = el.dataset.field;
   const item = microState.items.find(it=>it.id===itemId);
   if(!item) return;
-
   if(el.classList.contains("inline-status")){
     const newStatus = el.value || null;
     item[field] = newStatus;
@@ -2072,7 +2112,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
       let dateField = "fecha";
       if(field === "adidas_status") dateField = "adidas_fecha";
       else if(field === "reebok_status") dateField = "reebok_fecha";
-
       if(!item[dateField]){
         const todayStr = toISO(new Date());
         item[dateField] = todayStr;
@@ -2101,7 +2140,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
     showToast("📅 Fecha guardada");
   }
 });
-
 document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-obs")) return;
@@ -2114,7 +2152,6 @@ document.getElementById("microTbody").addEventListener("blur", (e)=>{
     showToast("✅ Observación guardada");
   }
 }, true);
-
 document.getElementById("microTbody").addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-maction]");
   if(!btn) return;
@@ -2132,7 +2169,6 @@ document.getElementById("microTbody").addEventListener("click",(e)=>{
     if(item) openMicroModal(item);
   }
 });
-
 function openMicroModal(item){
   microState.editingId = item ? item.id : null;
   document.getElementById("microModalTitle").textContent = item ? "✏️ Editar Actividad" : "+ Agregar Actividad";
@@ -2179,19 +2215,16 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   if(statusVal === "COMPLETO" && !fechaVal){
     fechaVal = toISO(new Date());
   }
-
   const adStatus = document.getElementById("m_adidas_status").value || null;
   let adFecha = document.getElementById("m_adidas_fecha").value || null;
   if(adStatus === "COMPLETO" && !adFecha){
     adFecha = toISO(new Date());
   }
-
   const rbStatus = document.getElementById("m_reebok_status").value || null;
   let rbFecha = document.getElementById("m_reebok_fecha").value || null;
   if(rbStatus === "COMPLETO" && !rbFecha){
     rbFecha = toISO(new Date());
   }
-
   const data = {
     proc: microState.selectedKey===INTERCOMPANY_KEY ? "INTERCOMPANY" : (state.shipmentsMap[microState.selectedKey]||{}).tipo,
     shipmentId: microState.selectedKey===INTERCOMPANY_KEY ? null : microState.selectedKey,
@@ -2226,13 +2259,10 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   checkAllAlerts();
   showToast("✅ Actividad guardada");
 });
-
 /* =========================================================
-   HOJA DE RESÚMENES (REDISEÑADA Y DEPURADA)
+   HOJA DE RESÚMENES (VINCULADA A MES DE ARRIBO AL CD)
 ========================================================= */
-const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-
-// Canales depurados (sin SNEAKERS, MARKETING ni TRANS-EMELEC) y agrupados por familia
+const RESUMEN_MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_FAMILIES = [
   { name: "RETAIL / TIENDAS", cls: "fam-retail", cols: ["MARATHON","TAF","BIG HEAD","OUTLET","EXPLORER","SPOMA","TIENDAS"] },
   { name: "DIGITAL",          cls: "fam-digital", cols: ["WEB","TELESHOP"] },
@@ -2242,7 +2272,6 @@ const CHANNEL_FAMILIES = [
 const CHANNEL_COLUMNS = CHANNEL_FAMILIES.reduce((acc, f) => acc.concat(f.cols), []);
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
 const GRUPOS = ["Calzado","Ropa","Accesorios"];
-
 function normTxt(s){
   if(s === null || s === undefined) return "";
   return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
@@ -2309,7 +2338,7 @@ function blankChannels(){
   return o;
 }
 const resumenState = {
-  mes: "JULIO",
+  mes: RESUMEN_MESES[new Date().getMonth()] || "JULIO",
   months: {},
   expandedGroups: new Set(),
   hideZeroCols: false
@@ -2330,19 +2359,55 @@ function findShipmentInfo(nombreEmbarque){
     return sName === target || target.includes(sName) || sName.includes(target);
   });
 }
+function getCdMonthNameForShipment(nombreEmbarque, fallbackMes){
+  const shInfo = findShipmentInfo(nombreEmbarque);
+  if(shInfo){
+    const cdDate = getEstimatedCDDate(shInfo);
+    if(cdDate && !isNaN(cdDate.getTime())){
+      return RESUMEN_MESES[cdDate.getMonth()] || fallbackMes;
+    }
+  }
+  return fallbackMes;
+}
+function getResumenRowsForMonth(targetMes){
+  const result = [];
+  Object.keys(resumenState.months || {}).forEach(bucketMes => {
+    const rows = resumenState.months[bucketMes] || [];
+    rows.forEach(r => {
+      if(!r) return;
+      const bType = resumenBlockOf(r);
+      if(bType === "INGRESOS EMBARQUE"){
+        const linkedMes = getCdMonthNameForShipment(r.embarque, bucketMes);
+        if(linkedMes === targetMes){
+          result.push(r);
+        }
+      } else {
+        if(bucketMes === targetMes){
+          result.push(r);
+        }
+      }
+    });
+  });
+  return result;
+}
 function rowKey(block, embarque, marca, grupo){
   return block + "||" + normTxt(embarque) + "||" + normTxt(marca) + "||" + grupo;
 }
 function ensureRow(mes, block, embarque, marca, grupo, meta){
-  if(!Array.isArray(resumenState.months[mes])) resumenState.months[mes] = [];
-  const list = resumenState.months[mes];
+  const targetMes = (block === "INGRESOS EMBARQUE") ? getCdMonthNameForShipment(embarque, mes) : mes;
+  if(!Array.isArray(resumenState.months[targetMes])) resumenState.months[targetMes] = [];
   const key = rowKey(block, embarque, marca, grupo);
-  let row = list.find(r => rowKey(r.block, r.embarque, r.marca, r.grupo) === key);
+  let row = null;
+  Object.keys(resumenState.months).forEach(m => {
+    if(row) return;
+    const found = (resumenState.months[m] || []).find(r => rowKey(r.block, r.embarque, r.marca, r.grupo) === key);
+    if(found) row = found;
+  });
   if(!row){
     row = {
       id: generateId(),
       block,
-      mes,
+      mes: targetMes,
       embarque,
       marca,
       grupo,
@@ -2354,7 +2419,7 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
       cartonesCount: 0,
       lpnList: []
     };
-    list.push(row);
+    resumenState.months[targetMes].push(row);
   }
   return row;
 }
@@ -2395,7 +2460,6 @@ function cellNum(row, idx){
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
   return isNaN(n) ? 0 : n;
 }
-
 function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
   const header = findHeaderRow(aoa, [["LPN PROVEEDOR"], ["EMBARQUE"], ["CANAL", "DESTINO"], ["CANT. EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
@@ -2406,20 +2470,16 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
   const qtyCol = getColIdx(colMap, ["CANT. EMPACADA", "CANT EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]);
   const mrcCol = getColIdx(colMap, ["MARCA"]);
   const grpCol = getColIdx(colMap, ["GRUPO"]);
-
   const fileContext = normTxt((fileName || "") + " " + (sheetName || ""));
   const fallbackMarca = fileContext.includes("REEBOK") ? "REEBOK" : "ADIDAS";
-
   const groupAcc = {};
   const globalUniqueLpns = new Set();
   let count = 0;
   let sinGrupo = 0;
-
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
     const embarque = cellStr(row, embCol);
     if(!embarque) continue;
-
     const rawMarca = mrcCol !== undefined ? cellStr(row, mrcCol) : "";
     const marca = rawMarca ? resolveMarca(rawMarca) : fallbackMarca;
     const rawGrupo = grpCol !== undefined ? cellStr(row, grpCol) : "";
@@ -2427,12 +2487,10 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
     const canal = resolveChannel(cellStr(row, cnlCol), null);
     const cantidad = cellNum(row, qtyCol);
     const lpn = cellStr(row, lpnCol);
-
     if(!grupo){
       if(cantidad > 0 || lpn) sinGrupo++;
       continue;
     }
-
     const key = normTxt(embarque) + "||" + marca + "||" + grupo;
     if(!groupAcc[key]){
       groupAcc[key] = { embarque, marca, grupo, lpns: new Set(), channels: {} };
@@ -2446,7 +2504,6 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
     }
     count++;
   }
-
   Object.values(groupAcc).forEach(acc => {
     ensureTriadRows(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, acc.grupo, {});
@@ -2458,13 +2515,11 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
     targetRow.lpnList = Array.from(prevLpns);
     targetRow.cartonesCount = targetRow.lpnList.length;
   });
-
   let msg = `Packing List LPN: ${count} filas procesadas · ${globalUniqueLpns.size.toLocaleString()} cartones únicos (LPN Proveedor sin duplicados).`;
   if(sinGrupo > 0) msg += ` (${sinGrupo} filas omitidas por no tener GRUPO válido).`;
   log.push({ type: count > 0 ? "ok" : "err", msg });
   return true;
 }
-
 function tryParseFormatA(aoa, mes, log){
   const header = findHeaderRow(aoa, [["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"], ["CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
@@ -2691,7 +2746,7 @@ function processWorkbook(workbook, mes, fileName, log, ctx){
   if(!matched){
     log.push({ type: "err", msg: `"${fileName}": no se reconoció formato válido.` });
   } else {
-    log.push({ type: "ok", msg: `"${fileName}" consolidado en ${mes}.` });
+    log.push({ type: "ok", msg: `"${fileName}" consolidado (vinculado por fecha CD).` });
   }
 }
 function handleResumenFiles(fileList){
@@ -2736,7 +2791,6 @@ function resumenBlockOf(r){
   if(r.block === QUICK_BLOCK) return QUICK_BLOCK;
   return "INGRESOS EMBARQUE";
 }
-
 function getVisibleChannelFamilies(rawList){
   if(!resumenState.hideZeroCols) return CHANNEL_FAMILIES;
   const colSums = {};
@@ -2751,7 +2805,6 @@ function getVisibleChannelFamilies(rawList){
     cols: f.cols.filter(c => colSums[c] > 0)
   })).filter(f => f.cols.length > 0);
 }
-
 function renderResumenKPIs(rawList){
   const el = document.getElementById("resumenKpis");
   if(!el) return;
@@ -2762,7 +2815,6 @@ function renderResumenKPIs(rawList){
   let totAll = 0, totAdidas = 0, totReebok = 0;
   const canalTotals = {};
   CHANNEL_COLUMNS.forEach(c => canalTotals[c] = 0);
-
   rawList.forEach(r => {
     const qty = rowCantidadTotal(r);
     totAll += qty;
@@ -2773,7 +2825,6 @@ function renderResumenKPIs(rawList){
       canalTotals[c] += Number(r.channels && r.channels[c]) || 0;
     });
   });
-
   let topCanal = "—", topCanalVal = 0;
   Object.keys(canalTotals).forEach(c => {
     if(canalTotals[c] > topCanalVal){
@@ -2781,16 +2832,14 @@ function renderResumenKPIs(rawList){
       topCanal = c;
     }
   });
-
   const pctAdi = totAll ? ((totAdidas / totAll) * 100).toFixed(1) + "%" : "0%";
   const pctRbk = totAll ? ((totReebok / totAll) * 100).toFixed(1) + "%" : "0%";
   const pctTop = totAll ? ((topCanalVal / totAll) * 100).toFixed(1) + "%" : "0%";
-
   el.innerHTML = `
     <div class="kpi-card total">
-      <span class="kpi-lbl">Total Unidades (${resumenState.mes})</span>
+      <span class="kpi-lbl">Total Unidades (Arribo CD · ${resumenState.mes})</span>
       <span class="kpi-val">${totAll.toLocaleString()}</span>
-      <span class="kpi-sub">Consolidado de ${rawList.length / 3 | 0} bloques</span>
+      <span class="kpi-sub">Consolidado de ${Math.ceil(rawList.length / 3)} bloques</span>
     </div>
     <div class="kpi-card adidas">
       <span class="kpi-lbl">🔴 Total Adidas</span>
@@ -2809,17 +2858,15 @@ function renderResumenKPIs(rawList){
     </div>
   `;
 }
-
 function renderResumenThead(visibleFamilies){
   const thead = document.getElementById("resumenThead");
   if(!thead) return;
   const famHeaders = visibleFamilies.map(f => `<th colspan="${f.cols.length}" class="${f.cls}">${escapeHtml(f.name)}</th>`).join("");
   const colHeaders = visibleFamilies.reduce((acc, f) => acc.concat(f.cols), [])
     .map(c => `<th style="min-width:74px;">${escapeHtml(c)}</th>`).join("");
-
   thead.innerHTML = `
     <tr>
-      <th colspan="4" class="fam-info stk-emb">DATOS DEL EMBARQUE · ${escapeHtml(resumenState.mes)}</th>
+      <th colspan="4" class="fam-info stk-emb">DATOS DEL EMBARQUE · ARRIBO CD: ${escapeHtml(resumenState.mes)}</th>
       ${famHeaders}
     </tr>
     <tr>
@@ -2830,16 +2877,13 @@ function renderResumenThead(visibleFamilies){
       ${colHeaders}
     </tr>`;
 }
-
 function renderResumen(){
-  const rawList = resumenState.months[resumenState.mes] || [];
+  const rawList = getResumenRowsForMonth(resumenState.mes);
   const emptyEl = document.getElementById("emptyResumen");
   const tbodyEl = document.getElementById("resumenTbody");
   if(!tbodyEl) return;
-
   document.querySelectorAll("#resumenMonthTabs .month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
   renderResumenKPIs(rawList);
-
   if(rawList.length === 0){
     renderResumenThead(CHANNEL_FAMILIES);
     tbodyEl.innerHTML = "";
@@ -2848,11 +2892,9 @@ function renderResumen(){
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
-
   const visibleFamilies = getVisibleChannelFamilies(rawList);
   const visibleCols = visibleFamilies.reduce((acc, f) => acc.concat(f.cols), []);
   renderResumenThead(visibleFamilies);
-
   const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES", QUICK_BLOCK];
   const structure = {};
   blocks.forEach(b => structure[b] = []);
@@ -2861,7 +2903,7 @@ function renderResumen(){
     let bList = structure[bKey];
     let embGroup = bList.find(e => normTxt(e.embarque) === normTxt(r.embarque));
     if(!embGroup){
-      embGroup = { embarque: r.embarque, mes: r.mes || resumenState.mes, marcas: [] };
+      embGroup = { embarque: r.embarque, mes: resumenState.mes, marcas: [] };
       bList.push(embGroup);
     }
     const resolvedM = resolveMarca(r.marca);
@@ -2872,21 +2914,16 @@ function renderResumen(){
     }
     mGroup.rows[r.grupo] = r;
   });
-
   const totalTableCols = 4 + visibleCols.length;
   let html = "";
   let bandIndex = 0;
-
   blocks.forEach((blockName) => {
     const embList = structure[blockName];
     if(embList.length === 0) return;
-
     const sectionLabel = blockName === "INGRESOS EMBARQUE"
-      ? `📦 INGRESOS DE EMBARQUE (${resumenState.mes})`
+      ? `📦 INGRESOS DE EMBARQUE (ARRIBO CD: ${resumenState.mes})`
       : (blockName === "INTERCOMPANIES" ? "🔄 INTERCOMPANIES" : `📊 ${quickTitleForMonth(resumenState.mes)}`);
-
     html += `<tr class="section-banner-row"><td colspan="${totalTableCols}">${escapeHtml(sectionLabel)}</td></tr>`;
-
     embList.forEach((emb) => {
       const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
       let metaTagsHtml = "";
@@ -2902,14 +2939,11 @@ function renderResumen(){
           metaTagsHtml += `<span class="emb-mini-tag">DEPCO: ${fmtDMY(parseISO(shInfo.fechaArriboDepco))}</span>`;
         }
       }
-
       emb.marcas.forEach((mObj) => {
         const bandClass = (bandIndex % 2 === 0) ? "emb-band-even" : "emb-band-odd";
         bandIndex++;
         const expKey = blockName + "||" + normTxt(emb.embarque) + "||" + normTxt(mObj.marca);
         const isExpanded = resumenState.expandedGroups.has(expKey);
-
-        // Sumar canales de los 3 grupos para la fila consolidada
         const sumChannels = blankChannels();
         let sumTotal = 0;
         GRUPOS.forEach(gName => {
@@ -2919,11 +2953,8 @@ function renderResumen(){
             sumChannels[c] += Number(r.channels && r.channels[c]) || 0;
           });
         });
-
         const displayTitle = blockName === QUICK_BLOCK ? "BASE QUICK" : emb.embarque;
         const marcaPillCls = mObj.marca === "REEBOK" ? "badge-marca-REEBOK" : "badge-marca-ADIDAS";
-
-        // Fila principal consolidada (1 fila por Embarque + Marca)
         html += `<tr class="emb-data-row ${bandClass}">`;
         html += `<td class="stk-emb">
           <div class="emb-title-box">
@@ -2942,8 +2973,6 @@ function renderResumen(){
           html += `<td class="channel-val" style="font-weight:700;">${val === 0 ? "" : Number(val).toLocaleString()}</td>`;
         });
         html += `</tr>`;
-
-        // Sub-filas desplegables (Calzado, Ropa, Accesorios)
         if(isExpanded){
           GRUPOS.forEach(grupoName => {
             const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
@@ -2963,11 +2992,8 @@ function renderResumen(){
       });
     });
   });
-
-  // Totales por grupo al final
   const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
   const grandTotals = blankChannels();
-
   rawList.forEach(r => {
     const g = r.grupo;
     if(!totalsByGrupo[g]) return;
@@ -2977,9 +3003,7 @@ function renderResumen(){
       grandTotals[c] += q;
     });
   });
-
   html += `<tr class="section-banner-row"><td colspan="${totalTableCols}">📈 RESUMEN TOTAL DEL MES POR GRUPO Y CANAL</td></tr>`;
-
   GRUPOS.forEach((gName, idx) => {
     const gChannels = totalsByGrupo[gName];
     const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
@@ -2995,26 +3019,22 @@ function renderResumen(){
     });
     html += `</tr>`;
   });
-
   const grandTotalAll = CHANNEL_COLUMNS.reduce((sum, c) => sum + (grandTotals[c] || 0), 0);
   html += `<tr class="grand-total-row">
     <td colspan="3" class="grand-label stk-emb">CANTIDAD TOTAL DEL MES</td>
     <td class="grand-num">${grandTotalAll ? grandTotalAll.toLocaleString() : 0}</td>
     ${visibleCols.map(c => `<td class="grand-channel">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
   </tr>`;
-
   const pct = (v) => grandTotalAll ? ((v / grandTotalAll) * 100).toFixed(1) + "%" : "0.0%";
   html += `<tr class="pct-row">
     <td colspan="3" class="pct-label stk-emb">% Participación por Canal</td>
     <td class="pct-val">${grandTotalAll ? "100.0%" : "0.0%"}</td>
     ${visibleCols.map(c => `<td class="pct-val">${pct(grandTotals[c] || 0)}</td>`).join("")}
   </tr>`;
-
   tbodyEl.innerHTML = html;
   populateResumenGroupSelect(rawList);
   updateExpandAllBtnLabel(rawList);
 }
-
 function updateExpandAllBtnLabel(rawList){
   const btn = document.getElementById("btnToggleExpandAll");
   if(!btn) return;
@@ -3025,7 +3045,6 @@ function updateExpandAllBtnLabel(rawList){
   const anyExpanded = allKeys.size > 0 && Array.from(allKeys).some(k => resumenState.expandedGroups.has(k));
   btn.textContent = anyExpanded ? "➖ Contraer grupos" : "➕ Expandir grupos";
 }
-
 function populateResumenGroupSelect(list){
   const sel = document.getElementById("resumenGroupSelect");
   if(!sel) return;
@@ -3039,7 +3058,6 @@ function populateResumenGroupSelect(list){
   });
   sel.innerHTML = opts;
 }
-
 document.getElementById("resumenTbody").addEventListener("click", (e) => {
   const btn = e.target.closest("button.btn-expand-grp");
   if(!btn) return;
@@ -3048,9 +3066,8 @@ document.getElementById("resumenTbody").addEventListener("click", (e) => {
   else resumenState.expandedGroups.add(key);
   renderResumen();
 });
-
 document.getElementById("btnToggleExpandAll").addEventListener("click", () => {
-  const rawList = resumenState.months[resumenState.mes] || [];
+  const rawList = getResumenRowsForMonth(resumenState.mes);
   const allKeys = new Set();
   rawList.forEach(r => {
     allKeys.add(resumenBlockOf(r) + "||" + normTxt(r.embarque) + "||" + normTxt(resolveMarca(r.marca)));
@@ -3063,12 +3080,10 @@ document.getElementById("btnToggleExpandAll").addEventListener("click", () => {
   }
   renderResumen();
 });
-
 document.getElementById("chkHideZeroCols").addEventListener("change", (e) => {
   resumenState.hideZeroCols = e.target.checked;
   renderResumen();
 });
-
 document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".month-btn");
   if(!btn) return;
@@ -3092,14 +3107,20 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", () =>
   const sel = document.getElementById("resumenGroupSelect");
   if(!sel || !sel.value) return;
   const [block, embarque, marca] = sel.value.split("||");
-  resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
+  Object.keys(resumenState.months || {}).forEach(m => {
+    resumenState.months[m] = (resumenState.months[m] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
+  });
   resumenSave();
   renderResumen();
   renderArribosCD();
-  showToast("🗑️ Quitado del mes");
+  showToast("🗑️ Quitado del resumen");
 });
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
-  if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
+  if(!confirm(`¿Limpiar todos los datos vinculados a ${resumenState.mes}?`)) return;
+  const visibleIds = new Set(getResumenRowsForMonth(resumenState.mes).map(r => r.id));
+  Object.keys(resumenState.months || {}).forEach(m => {
+    resumenState.months[m] = (resumenState.months[m] || []).filter(r => !visibleIds.has(r.id));
+  });
   resumenState.months[resumenState.mes] = [];
   resumenSave();
   renderResumen();
@@ -3107,8 +3128,8 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
   showToast("🧹 Mes limpiado");
 });
 document.getElementById("btnExportResumen").addEventListener("click", () => {
-  const rawList = resumenState.months[resumenState.mes] || [];
-  const header = ["BLOQUE", "MES", "EMBARQUE", "TIPO", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
+  const rawList = getResumenRowsForMonth(resumenState.mes);
+  const header = ["BLOQUE", "MES ARRIBO CD", "EMBARQUE", "TIPO", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
   const aoa = [header];
   rawList.forEach(r => {
     const shInfo = (resumenBlockOf(r) === "INGRESOS EMBARQUE") ? findShipmentInfo(r.embarque) : null;
@@ -3145,7 +3166,6 @@ function saveArribosManualField(shipmentKey, field, value){
     arribosManualRef.child(shipmentKey).child(field).set(value === "" ? null : value).catch(e=>console.warn(e));
   }
 }
-
 function getResumenStatsForShipment(nombreEmbarque){
   const target = normTxt(nombreEmbarque);
   const stats = {
@@ -3154,13 +3174,11 @@ function getResumenStatsForShipment(nombreEmbarque){
     accU: 0, accC: 0
   };
   if(!target) return stats;
-
   const lpnSets = {
     Calzado: new Set(),
     Ropa: new Set(),
     Accesorios: new Set()
   };
-
   Object.keys(resumenState.months || {}).forEach(mes => {
     const rows = resumenState.months[mes] || [];
     rows.forEach(r => {
@@ -3186,13 +3204,11 @@ function getResumenStatsForShipment(nombreEmbarque){
       }
     });
   });
-
   if(lpnSets.Calzado.size > 0) stats.zapC = lpnSets.Calzado.size;
   if(lpnSets.Ropa.size > 0) stats.ropC = lpnSets.Ropa.size;
   if(lpnSets.Accesorios.size > 0) stats.accC = lpnSets.Accesorios.size;
   return stats;
 }
-
 function populateArribosYearSelect(){
   const sel = document.getElementById("arribosYearSelect");
   if(!sel) return;
@@ -3207,25 +3223,27 @@ function populateArribosYearSelect(){
   if(prev && Array.from(sel.options).some(o=>o.value===prev)) sel.value = prev;
   else sel.value = String(new Date().getFullYear());
 }
-
+function getFilteredArribosCD(){
+  const selYear = document.getElementById("arribosYearSelect");
+  const selMonth = document.getElementById("arribosMonthSelect");
+  const filterYear = selYear ? Number(selYear.value) : 0;
+  const filterMonth = selMonth ? Number(selMonth.value) : 0;
+  return getShipmentsArray().map(sh => {
+    const cdDate = getEstimatedCDDate(sh);
+    return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
+  }).filter(item => {
+    if(filterYear && (!item.cdDate || item.cdDate.getFullYear() !== filterYear)) return false;
+    if(filterMonth && (!item.cdDate || (item.cdDate.getMonth() + 1) !== filterMonth)) return false;
+    return true;
+  }).sort((a,b) => a.cdTime - b.cdTime);
+}
 function renderArribosCD(){
   populateArribosYearSelect();
-  const sel = document.getElementById("arribosYearSelect");
-  const filterYear = sel ? Number(sel.value) : 0;
   const tbody = document.getElementById("arribosCdTbody");
   const tfoot = document.getElementById("arribosCdTfoot");
   const emptyEl = document.getElementById("emptyArribosCD");
   if(!tbody || !tfoot) return;
-
-  // Ordenar embarques cronológicamente por fecha de arribo al CD
-  const enriched = getShipmentsArray().map(sh => {
-    const cdDate = getEstimatedCDDate(sh);
-    return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
-  }).filter(item => {
-    if(!filterYear) return true;
-    return item.cdDate && item.cdDate.getFullYear() === filterYear;
-  }).sort((a,b) => a.cdTime - b.cdTime);
-
+  const enriched = getFilteredArribosCD();
   if(enriched.length === 0){
     tbody.innerHTML = "";
     tfoot.innerHTML = "";
@@ -3233,10 +3251,8 @@ function renderArribosCD(){
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
-
   let sumZapU = 0, sumZapC = 0, sumRopU = 0, sumRopC = 0, sumAccU = 0, sumAccC = 0;
   let sumTotU = 0, sumTotC = 0, sumKg = 0, sumCbm = 0;
-
   tbody.innerHTML = enriched.map(({ sh, cdDate }) => {
     const stats = getResumenStatsForShipment(sh.nombre);
     const totU = stats.zapU + stats.ropU + stats.accU;
@@ -3245,14 +3261,12 @@ function renderArribosCD(){
     const kgVal = manual.kgBruto !== undefined && manual.kgBruto !== null ? manual.kgBruto : "";
     const cbmVal = manual.cubicaje !== undefined && manual.cubicaje !== null ? manual.cubicaje : "";
     const contVal = manual.contenedores !== undefined && manual.contenedores !== null ? manual.contenedores : "";
-
     sumZapU += stats.zapU; sumZapC += stats.zapC;
     sumRopU += stats.ropU; sumRopC += stats.ropC;
     sumAccU += stats.accU; sumAccC += stats.accC;
     sumTotU += totU; sumTotC += totC;
     sumKg += parseFloat(kgVal) || 0;
     sumCbm += parseFloat(cbmVal) || 0;
-
     return `
       <tr>
         <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
@@ -3275,7 +3289,6 @@ function renderArribosCD(){
       </tr>
     `;
   }).join("");
-
   tfoot.innerHTML = `
     <tr>
       <td colspan="5" style="text-align:right;">TOTAL CONSOLIDADO (${enriched.length} embarques):</td>
@@ -3293,9 +3306,8 @@ function renderArribosCD(){
     </tr>
   `;
 }
-
 document.getElementById("arribosYearSelect").addEventListener("change", renderArribosCD);
-
+document.getElementById("arribosMonthSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosCdTbody").addEventListener("change", (e)=>{
   const inp = e.target.closest("input.arribos-input");
   if(!inp) return;
@@ -3306,23 +3318,18 @@ document.getElementById("arribosCdTbody").addEventListener("change", (e)=>{
   renderArribosCD();
   showToast("💾 Dato logístico guardado");
 });
-
 document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
-  const sel = document.getElementById("arribosYearSelect");
-  const filterYear = sel ? Number(sel.value) : 0;
-  const enriched = getShipmentsArray().map(sh => {
-    const cdDate = getEstimatedCDDate(sh);
-    return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
-  }).filter(item => !filterYear || (item.cdDate && item.cdDate.getFullYear() === filterYear))
-    .sort((a,b) => a.cdTime - b.cdTime);
-
+  const selYear = document.getElementById("arribosYearSelect");
+  const selMonth = document.getElementById("arribosMonthSelect");
+  const filterYear = selYear ? Number(selYear.value) : 0;
+  const filterMonth = selMonth ? Number(selMonth.value) : 0;
+  const enriched = getFilteredArribosCD();
   const aoa = [
     ["STATUS DE ARRIBO DE EMBARQUE/ORDENES"],
     ["NOMBRE DE LA EMPRESA", "", "", "", "", "ZAPATOS", "", "ROPA", "", "ACCESORIOS", "", "Cantidad Total", "Total Cartones", "Total KG. BRUTO", "Total CUBICAJE", "ESTADO", ""],
     [],
     ["FECHA APROX DE ARRIBO AL CD", "TIPO DE ORIGEN / ORDEN", "EMPRESA", "MARCA", "NOMBRE DEL EMBARQUE", "UNIDADES", "CTNES", "UNIDADES", "CTNES", "UNIDADES", "CTNES", "", "", "", "", "", "NUMERO DE CONTENEDORES"]
   ];
-
   enriched.forEach(({ sh, cdDate }) => {
     const stats = getResumenStatsForShipment(sh.nombre);
     const totU = stats.zapU + stats.ropU + stats.accU;
@@ -3348,7 +3355,6 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
       manual.contenedores || ""
     ]);
   });
-
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!merges"] = [
     { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
@@ -3364,10 +3370,10 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "ARRIBOS_CD");
-  XLSX.writeFile(wb, `Tabla_Arribos_CD_${filterYear || "TODOS"}.xlsx`);
+  const suffixMes = filterMonth ? "_" + FILTER_MONTHS[filterMonth - 1] : "";
+  XLSX.writeFile(wb, `Tabla_Arribos_CD_${filterYear || "TODOS"}${suffixMes}.xlsx`);
   showToast("⬇ Tabla de Arribos CD exportada a Excel");
 });
-
 /* =========================================================
    INICIALIZACIÓN
 ========================================================= */
