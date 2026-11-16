@@ -250,6 +250,44 @@
   .alert-banner.sla-warning{
     background:#fff4e5;border-color:#ffd591;color:#873800;
   }
+  .cd-sla-callout{
+    margin:10px 14px 0 14px;
+    padding:12px 15px;
+    border-radius:8px;
+    background:#fff4e5;
+    border:1px solid #ffd591;
+    border-left:4px solid #C55A11;
+    color:#612b00;
+    font-size:12.5px;
+  }
+  .cd-sla-callout.danger{
+    background:#fff0f0;
+    border-color:#ffccc7;
+    border-left-color:#C00000;
+    color:#820014;
+  }
+  .cd-sla-callout.info{
+    background:#f0f7ff;
+    border-color:#bae0ff;
+    border-left-color:#0b5aa8;
+    color:#003a8c;
+  }
+  .cd-sla-callout-title{
+    font-weight:800;
+    font-size:13px;
+    margin-bottom:4px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .cd-sla-callout ul{
+    margin:6px 0 0 18px;
+    padding:0;
+  }
+  .cd-sla-callout li{
+    margin-bottom:4px;
+    line-height:1.35;
+  }
   .cd-history-list{
     margin-top:8px;padding:8px 12px;background:#fafbfe;border:1px solid var(--line);border-radius:7px;font-size:11.5px;
   }
@@ -1178,18 +1216,20 @@ function evaluateCdAdjustment(sh, newCdStartDate){
 
   specs.forEach(sp => {
     const prevAct = currentActs.find(a => a.key === sp.key);
+    const prevDate = prevAct ? prevAct.start : addBusinessDays(getEstimatedCDDate(sh), sp.offset);
     const idealDate = addBusinessDays(newCdStartDate, sp.offset);
     const alreadyDone = isBarTaskCompletedInMicro(sh, sp.key, sp.label);
 
     if(alreadyDone){
-      // Si ya se completó en microprocesos, conservar su fecha real/previa sin moverla
       const keepDate = prevAct ? prevAct.start : idealDate;
       results.push({
         key: sp.key,
         label: sp.label,
         offset: sp.offset,
+        prevDate,
         idealDate,
         assignedDate: keepDate,
+        movedDays: diffBusinessDays(prevDate, keepDate),
         clampedToToday: false,
         slaDeficitDays: 0,
         alreadyDone: true
@@ -1198,14 +1238,15 @@ function evaluateCdAdjustment(sh, newCdStartDate){
     }
 
     if(idealDate < hoyEjecutable){
-      // Anti-viaje al pasado: anclar automáticamente a HOY y calcular déficit contra el SLA del CD
       const deficit = diffBusinessDays(idealDate, hoyEjecutable);
       results.push({
         key: sp.key,
         label: sp.label,
         offset: sp.offset,
+        prevDate,
         idealDate,
         assignedDate: hoyEjecutable,
+        movedDays: diffBusinessDays(prevDate, hoyEjecutable),
         clampedToToday: true,
         slaDeficitDays: deficit,
         alreadyDone: false
@@ -1215,8 +1256,10 @@ function evaluateCdAdjustment(sh, newCdStartDate){
         key: sp.key,
         label: sp.label,
         offset: sp.offset,
+        prevDate,
         idealDate,
         assignedDate: idealDate,
+        movedDays: diffBusinessDays(prevDate, idealDate),
         clampedToToday: false,
         slaDeficitDays: 0,
         alreadyDone: false
@@ -2008,6 +2051,52 @@ function renderShipmentGantt(sh, brandContext){
       })() : ''}
       ${hasCustomDates ? `<button class="btn small ghost" data-action="reset-dates" data-id="${sh.id}" style="color:var(--navy);background:#fff;border-color:#d0d7de;">↺ Restablecer fechas</button>` : ''}
     </div>
+    ${(() => {
+      if(!Array.isArray(sh.cdChangeLog) || sh.cdChangeLog.length === 0) return "";
+      const last = sh.cdChangeLog[sh.cdChangeLog.length - 1];
+      const movs = Array.isArray(last.movimientos) ? last.movimientos : [];
+      const maxDeficit = movs.reduce((mx, m) => Math.max(mx, Number(m.deficitCD) || 0), 0);
+      const isAdelanto = last.deltaDias < 0;
+      const calloutCls = maxDeficit > 0 ? "danger" : (isAdelanto ? "" : "info");
+      const signCd = last.deltaDias > 0 ? `+${last.deltaDias}` : `${last.deltaDias}`;
+
+      let resumenCompromiso = "";
+      if(maxDeficit > 0){
+        resumenCompromiso = `⚠️ <b>Alerta de incumplimiento de tiempo establecido por el CD:</b> Por este adelanto de COMEX (${signCd} días hábiles), estás quedando mal con el CD por hasta <b>${maxDeficit} día(s) hábil(es)</b> respecto a los tiempos estándar de entrega previos al arribo.`;
+      } else if(isAdelanto){
+        resumenCompromiso = `⏱️ <b>Adelanto de fecha CD (${signCd} días hábiles):</b> Las actividades dependientes se ajustaron automáticamente y aún alcanzan a cumplir con el margen estándar del CD.`;
+      } else {
+        resumenCompromiso = `📅 <b>Aplazamiento de fecha CD (${signCd} días hábiles):</b> Se reajustaron las fechas dependientes del ingreso al CD.`;
+      }
+
+      let listaMovsHtml = "";
+      if(movs.length > 0){
+        const itemsLi = movs.map(m => {
+          const sgnMov = m.diasMovidos > 0 ? `+${m.diasMovidos}` : `${m.diasMovidos}`;
+          const fPrev = m.fechaPrevia ? fmtDMY(parseISO(m.fechaPrevia)) : "—";
+          const fAsig = m.fechaAsignada ? fmtDMY(parseISO(m.fechaAsignada)) : "—";
+          const fIdeal = m.fechaIdeal ? fmtDMY(parseISO(m.fechaIdeal)) : "—";
+
+          if(m.yaCompletada){
+            return `<li><b>${escapeHtml(m.label)}:</b> Sin cambios (ya estaba <b>COMPLETA</b> el ${fAsig}).</li>`;
+          }
+          if(m.clampedToToday && m.deficitCD > 0){
+            return `<li><b>${escapeHtml(m.label)}:</b> Se movió de <b>${fPrev}</b> a <b>${fAsig} (HOY)</b> (${sgnMov} días hábiles). Debía enviarse el <b>${fIdeal}</b> (${Math.abs(m.offset)}d antes del CD) &rarr; <span style="color:#C00000;font-weight:800;">Quedas mal con el CD por ${m.deficitCD} día(s) hábil(es).</span></li>`;
+          }
+          return `<li><b>${escapeHtml(m.label)}:</b> Se movió de <b>${fPrev}</b> a <b>${fAsig}</b> (${sgnMov} días hábiles · cumple margen de ${Math.abs(m.offset)}d antes del CD).</li>`;
+        }).join("");
+        listaMovsHtml = `<ul>${itemsLi}</ul>`;
+      }
+
+      return `
+        <div class="cd-sla-callout ${calloutCls}">
+          <div class="cd-sla-callout-title">
+            ${maxDeficit > 0 ? "🚨" : "📝"} Nota de Ajuste por Cambio de Fecha CD (${fmtDMY(parseISO(last.fechaAnterior))} &rarr; ${fmtDMY(parseISO(last.fechaNueva))}) · Motivo: <i>"${escapeHtml(last.motivo)}"</i>
+          </div>
+          <div>${resumenCompromiso}</div>
+          ${listaMovsHtml}
+        </div>`;
+    })()}
     <div class="gantt-scroll">
       ${headerRow}
       ${topRow.length ? `<div class="zone-caption">Sub-bloque superior</div>${rowForBars(topRow)}` : ""}
@@ -2588,14 +2677,26 @@ document.getElementById("btnCdChangeConfirm").addEventListener("click", ()=>{
     };
   });
 
-  // Guardar bitácora del cambio COMEX
+  // Guardar bitácora detallada del cambio COMEX y las actividades reajustadas
   if(!Array.isArray(sh.cdChangeLog)) sh.cdChangeLog = [];
   sh.cdChangeLog.push({
     fechaAnterior: toISO(ctx.oldCdDate),
     fechaNueva: toISO(ctx.newCdDate),
     deltaDias: ctx.deltaBusinessDays,
     motivo: motivo,
-    registradoEn: new Date().toISOString()
+    registradoEn: new Date().toISOString(),
+    movimientos: ctx.adjustments.map(adj => ({
+      key: adj.key,
+      label: adj.label,
+      offset: adj.offset,
+      fechaPrevia: toISO(adj.prevDate),
+      fechaIdeal: toISO(adj.idealDate),
+      fechaAsignada: toISO(adj.assignedDate),
+      diasMovidos: adj.movedDays,
+      clampedToToday: !!adj.clampedToToday,
+      deficitCD: adj.slaDeficitDays || 0,
+      yaCompletada: !!adj.alreadyDone
+    }))
   });
 
   const hasSlaRisk = ctx.adjustments.some(a => a.clampedToToday);
