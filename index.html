@@ -878,14 +878,21 @@ function initFirebase(){
     emailConfigRef.on("value", (snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
-        if(val.to || val.cc){
-          if(val.to) Object.assign(emailConfigState.destinatarios, val.to);
-          if(val.cc) Object.assign(emailConfigState.cc, val.cc);
-        } else {
-          Object.assign(emailConfigState.destinatarios, val);
-        }
+        const toObj = val.to || (!val.cc ? val : {});
+        const ccObj = val.cc || {};
+        EMAIL_ROLES_DEF.forEach(r => {
+          if(Object.prototype.hasOwnProperty.call(toObj, r.key)){
+            emailConfigState.destinatarios[r.key] = toObj[r.key] || "";
+          }
+          if(Object.prototype.hasOwnProperty.call(ccObj, r.key)){
+            emailConfigState.cc[r.key] = ccObj[r.key] || "";
+          }
+        });
         saveLocalBackup();
-        renderEmailConfigView();
+        const ae = document.activeElement;
+        if(!(ae && ae.classList && ae.classList.contains("email-role-input"))){
+          renderEmailConfigView();
+        }
       }
     });
     emailLogRef.on("value", (snap)=>{
@@ -1530,6 +1537,28 @@ function renderEmailConfigView(){
     `;
   }).join("");
 }
+
+document.addEventListener("input", (e)=>{
+  const inp = e.target.closest(".email-role-input");
+  if(!inp) return;
+  const rk = inp.dataset.rolekey;
+  if(inp.dataset.kind === "cc") emailConfigState.cc[rk] = inp.value;
+  else emailConfigState.destinatarios[rk] = inp.value;
+  saveLocalBackup();
+});
+
+document.addEventListener("change", (e)=>{
+  const inp = e.target.closest(".email-role-input");
+  if(!inp) return;
+  const rk = inp.dataset.rolekey;
+  if(inp.dataset.kind === "cc") emailConfigState.cc[rk] = inp.value.trim();
+  else emailConfigState.destinatarios[rk] = inp.value.trim();
+  saveLocalBackup();
+  if(cloudMode && emailConfigRef){
+    emailConfigRef.set({ to: emailConfigState.destinatarios, cc: emailConfigState.cc }).catch(err=>console.warn(err));
+  }
+  showToast("💾 Correo actualizado");
+});
 
 document.addEventListener("click", (e)=>{
   function syncEmailInputsToState(){
@@ -2237,6 +2266,11 @@ document.getElementById("fileImport").addEventListener("change", (e)=>{
 });
 document.querySelectorAll(".tab").forEach(tab=>{
   tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".email-role-input").forEach(inp => {
+      const rk = inp.dataset.rolekey;
+      if(inp.dataset.kind === "cc") emailConfigState.cc[rk] = inp.value.trim();
+      else emailConfigState.destinatarios[rk] = inp.value.trim();
+    });
     document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
     document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
     tab.classList.add("active");
