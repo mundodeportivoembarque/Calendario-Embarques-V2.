@@ -1144,6 +1144,7 @@ function getAlertsForShipment(sh){
           alerts.push({
             barKey: a.key,
             activityLabel: a.label,
+            responsable: a.responsable, // <--- Se agrega el área responsable
             taskLabel: task.act,
             dueDate: a.end,
             shipmentName: sh.nombre,
@@ -1156,46 +1157,183 @@ function getAlertsForShipment(sh){
   });
   return alerts;
 }
+
+function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
+  const grupos = {};
+  let totalAtrasadas = 0;
+  let totalHoy = 0;
+
+  listaAlertas.forEach(a => {
+    const fechaLimite = new Date(a.dueDate);
+    fechaLimite.setHours(0, 0, 0, 0);
+    const esAtrasada = fechaLimite < hoy;
+    if (esAtrasada) totalAtrasadas++;
+    else totalHoy++;
+
+    if (!grupos[a.shipmentId]) {
+      grupos[a.shipmentId] = {
+        nombre: a.shipmentName,
+        marca: marcaLabel(a.marca),
+        items: []
+      };
+    }
+    grupos[a.shipmentId].items.push({
+      actividad: a.activityLabel,
+      responsable: a.responsable || "Planificación",
+      fecha: fmtDMY(a.dueDate),
+      esAtrasada
+    });
+  });
+
+  let bloquesHtml = "";
+  Object.values(grupos).forEach(g => {
+    const badgeColor = g.marca === "ADIDAS" ? "#C00000" : (g.marca === "REEBOK" ? "#0d4a8c" : "#4b3869");
+    let filasHtml = "";
+
+    g.items.forEach(it => {
+      const estadoBadge = it.esAtrasada
+        ? `<span style="background:#fde3e3;color:#a81c1c;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">🚨 ATRASADA (${it.fecha})</span>`
+        : `<span style="background:#fff3cd;color:#856404;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">📌 VENCE HOY (${it.fecha})</span>`;
+
+      filasHtml += `
+        <tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #e1e5ee;color:#1c2333;font-size:13px;">
+            ${escapeHtml(it.actividad)}
+            <div style="font-size:11px;color:#68708a;margin-top:2px;">Área responsable: <b>${escapeHtml(it.responsable)}</b></div>
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e1e5ee;text-align:right;white-space:nowrap;vertical-align:middle;">${estadoBadge}</td>
+        </tr>`;
+    });
+
+    bloquesHtml += `
+      <div style="margin-bottom:16px;border:1px solid #dce2ec;border-radius:8px;overflow:hidden;background:#ffffff;">
+        <div style="background:#f6f8fc;padding:10px 14px;border-bottom:2px solid #e1e5ee;font-family:'Segoe UI',Arial,sans-serif;">
+          <span style="background:${badgeColor};color:#ffffff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;margin-right:8px;">${escapeHtml(g.marca)}</span>
+          <strong style="color:#1B2A4A;font-size:14px;">EMBARQUE: ${escapeHtml(g.nombre)}</strong>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif;">
+          ${filasHtml}
+        </table>
+      </div>`;
+  });
+
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:680px;margin:0 auto;color:#1c2333;background:#f3f5f9;padding:20px;border-radius:10px;">
+      <div style="background:#1B2A4A;color:#ffffff;padding:16px 20px;border-radius:8px 8px 0 0;">
+        <h2 style="margin:0;font-size:17px;">⚠️ Alertas de Embarques · ${escapeHtml(tituloRol)}</h2>
+        <p style="margin:4px 0 0 0;font-size:12px;color:#c7d1ea;">${escapeHtml(subtituloAlcance)} · Corte: ${fmtDMY(hoy)}</p>
+      </div>
+      <div style="background:#ffffff;padding:18px 20px;border:1px solid #e1e5ee;border-top:none;border-radius:0 0 8px 8px;">
+        <p style="margin:0 0 14px 0;font-size:13.5px;">Hola,</p>
+        <p style="margin:0 0 16px 0;font-size:13.5px;">Se presenta el detalle de actividades pendientes y atrasadas correspondientes a su gestión:</p>
+        
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;border-collapse:collapse;">
+          <tr>
+            <td style="width:48%;padding:10px;background:#fff0f0;border:1px solid #ffccc7;border-radius:6px;text-align:center;">
+              <div style="font-size:11px;color:#a81c1c;font-weight:bold;text-transform:uppercase;">Actividades Atrasadas</div>
+              <div style="font-size:20px;color:#C00000;font-weight:800;">${totalAtrasadas}</div>
+            </td>
+            <td style="width:4%;"></td>
+            <td style="width:48%;padding:10px;background:#fff9e6;border:1px solid #ffe58f;border-radius:6px;text-align:center;">
+              <div style="font-size:11px;color:#856404;font-weight:bold;text-transform:uppercase;">Pendientes para Hoy</div>
+              <div style="font-size:20px;color:#b78103;font-weight:800;">${totalHoy}</div>
+            </td>
+          </tr>
+        </table>
+
+        ${bloquesHtml}
+
+        <p style="margin:18px 0 0 0;font-size:12.5px;color:#68708a;border-top:1px solid #e1e5ee;padding-top:12px;">
+          Por favor ingresar al sistema <b>Planificación de Embarques Medeport</b> para actualizar el estado de los microprocesos.<br><br>
+          Saludos cordiales,<br>
+          <strong>Planificación · Mundo Deportivo</strong>
+        </p>
+      </div>
+    </div>`;
+
+  return { html, totalAtrasadas, totalHoy };
+}
+
 function enviarAlertaPorPowerAutomate(alertas) {
   if (!alertas || alertas.length === 0) return;
+
   const hoy = new Date();
-  hoy.setHours(0,0,0,0);
+  hoy.setHours(0, 0, 0, 0);
   const hoyStr = hoy.toISOString().slice(0, 10);
+
   if (localStorage.getItem("ultimo_correo_alerta") === hoyStr) return;
-  let resumen = "Hola,\n\nSe presenta el resumen actualizado de actividades de embarques en Medeport:\n\n";
+
+  // 1. Eliminar duplicados (mismo embarque + misma barra Gantt)
+  const unicasMap = new Map();
   alertas.forEach(a => {
-    const fechaLimite = new Date(a.dueDate);
-    fechaLimite.setHours(0,0,0,0);
-    let estadoTexto = "";
-    if (fechaLimite < hoy) {
-      estadoTexto = `🚨 ESTÁ ATRASADA (Venció el ${fmtDMY(a.dueDate)})`;
-    } else {
-      estadoTexto = `📌 ESTÁ PENDIENTE PARA HOY (${fmtDMY(a.dueDate)})`;
-    }
-    resumen += `• [${a.marca}] Embarque: "${a.shipmentName}"\n`;
-    resumen += `  Actividad: ${a.activityLabel}\n`;
-    resumen += `  Estado: ${estadoTexto}\n\n`;
+    const key = `${a.shipmentId}||${a.barKey}`;
+    if (!unicasMap.has(key)) unicasMap.set(key, a);
   });
-  resumen += "Por favor ingresar al sistema para actualizar el estado de los microprocesos.\n\nSaludos,";
-  const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bftl1Cy-S_cvpjyC2b1KdS6dnNWVsWQgHUCZo3cayB8";
-  const payload = {
-    destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com",
-    asunto: "⚠️ Notificación de Actividades y Embarques - Medeport",
-    mensaje: resumen
-  };
-  fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(res => {
-    if (res.ok) {
-      console.log("📧 Correo de alerta enviado vía Outlook.");
-      localStorage.setItem("ultimo_correo_alerta", hoyStr);
-      showToast("📧 Notificación enviada a Outlook corporativo");
+  const alertasUnicas = Array.from(unicasMap.values());
+
+  // 2. Configuración de destinatarios por rol/área
+  const enviosPorRol = [
+    {
+      rol: "Planificación (Vista General)",
+      subtitulo: "Consolidado completo de todas las áreas y marcas",
+      destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com; katherin.chacon@mundodeportivo-ec.com",
+      filtrar: () => true // Recibe TODO
+    },
+    {
+      rol: "Producto ADIDAS",
+      subtitulo: "Actividades asignadas a Producto · Marca Adidas",
+      destinatario: "silvia.vaca@mundodeportivo-ec.com",
+      filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "ADIDAS" || a.marca === "ADI_RBK")
+    },
+    {
+      rol: "Producto REEBOK",
+      subtitulo: "Actividades asignadas a Producto · Marca Reebok",
+      destinatario: "francisco.larrea@mundodeportivo-ec.com; paola.berrazueta@mundodeportivo-ec.com",
+      filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "REEBOK" || a.marca === "ADI_RBK")
     }
-  })
-  .catch(err => console.error("Error al enviar la alerta:", err));
+    /* Puedes descomentar y agregar correos si deseas notificar también a otras áreas:
+    ,{
+      rol: "COMEX",
+      subtitulo: "Actividades asignadas a Comercio Exterior",
+      destinatario: "correo.comex@mundodeportivo-ec.com",
+      filtrar: (a) => (a.responsable || "").toLowerCase().includes("comex")
+    }
+    */
+  ];
+
+  const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bftl1Cy-S_cvpjyC2b1KdS6dnNWVsWQgHUCZo3cayB8";
+
+  // 3. Disparar un correo personalizado únicamente a los roles que tengan alertas activas
+  const promesas = [];
+  enviosPorRol.forEach(grupo => {
+    const alertasRol = alertasUnicas.filter(grupo.filtrar);
+    if (alertasRol.length === 0) return; // Si esa área no tiene pendientes, no se le envía correo
+
+    const { html, totalAtrasadas, totalHoy } = construirHtmlCorreo(alertasRol, hoy, grupo.rol, grupo.subtitulo);
+    const payload = {
+      destinatario: grupo.destinatario,
+      asunto: `⚠️ Alertas Embarques [${grupo.rol}] (${totalAtrasadas} atrasadas · ${totalHoy} hoy)`,
+      mensaje: html
+    };
+
+    promesas.push(
+      fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+    );
+  });
+
+  if (promesas.length > 0) {
+    Promise.all(promesas)
+      .then(() => {
+        console.log(`📧 Se enviaron ${promesas.length} reportes segmentados vía Outlook.`);
+        localStorage.setItem("ultimo_correo_alerta", hoyStr);
+        showToast(`📧 Notificaciones enviadas (${promesas.length} áreas notificadas)`);
+      })
+      .catch(err => console.error("Error al enviar las alertas:", err));
+  }
 }
 function checkAllAlerts(){
   const shipments = getShipmentsArray();
