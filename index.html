@@ -1200,12 +1200,19 @@ const EMAIL_ROLES_DEF = [
     defaultEmails: "",
     filtrar: (a) => (a.responsable || "").toLowerCase().includes("comex")
   },
-  {
-    key: "tiendas",
-    rol: "Tiendas",
-    subtitulo: "Actividades asignadas a Distribución / Tiendas",
+{
+    key: "tiendas_adidas",
+    rol: "Tiendas ADIDAS",
+    subtitulo: "Actividades de Distribución / Tiendas · Marca Adidas y ADI & RBK",
     defaultEmails: "",
-    filtrar: (a) => (a.responsable || "").toLowerCase().includes("tiendas")
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("tiendas") && (a.marca === "ADIDAS" || a.marca === "ADI_RBK")
+  },
+  {
+    key: "tiendas_reebok",
+    rol: "Tiendas REEBOK",
+    subtitulo: "Actividades de Distribución / Tiendas · Marca Reebok y ADI & RBK",
+    defaultEmails: "",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("tiendas") && (a.marca === "REEBOK" || a.marca === "ADI_RBK")
   },
   {
     key: "logistica",
