@@ -213,6 +213,31 @@
   .act-bar.is-custom::after{content:" •";font-size:14px;color:rgba(255,255,255,0.9);margin-left:3px;}
   .act-bar.dark-text.is-custom::after{color:#242424;}
   
+  /* Vista Consolidada: bloques limpios solo por color y altura compacta */
+  #consolidadoGrid .act-bar{
+    min-height:20px;
+    height:20px;
+    padding:0;
+    font-size:0;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  #consolidadoGrid .act-bar:hover{
+    transform:scaleY(1.15);
+    box-shadow:0 2px 8px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.5);
+  }
+  .consolidado-legend{
+    display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:12px;padding:10px 12px;
+    background:#f6f8fc;border:1px solid var(--line);border-radius:8px;font-size:11.5px;
+  }
+  .consolidado-legend-item{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:600;}
+  .consolidado-legend-swatch{width:14px;height:14px;border-radius:4px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);}
+  .gantt-floating-tip{
+    position:fixed;z-index:9999;pointer-events:none;background:#1B2A4A;color:#fff;
+    padding:7px 11px;border-radius:7px;font-size:12px;line-height:1.35;
+    box-shadow:0 6px 18px rgba(10,15,35,.32);max-width:290px;display:none;
+    border:1px solid rgba(255,255,255,.15);
+  }
   .act-bar.has-alert{
     animation: alertPulse 2s infinite;
     outline: 2px solid var(--danger) !important;
@@ -1942,6 +1967,22 @@ function renderConsolidated(){
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
+
+  // Leyenda de colores compacta basada en las actividades visibles del mes
+  const legendMap = new Map();
+  rows.forEach(r => {
+    r.acts.forEach(a => {
+      if(a.end >= monthStart && a.start <= monthEnd && !legendMap.has(a.color)){
+        legendMap.set(a.color, a.label);
+      }
+    });
+  });
+  let legendHtml = `<div class="consolidado-legend">`;
+  legendMap.forEach((lbl, color) => {
+    legendHtml += `<span class="consolidado-legend-item"><span class="consolidado-legend-swatch" style="background:${color};"></span>${escapeHtml(lbl)}</span>`;
+  });
+  legendHtml += `</div>`;
+
   let headerCells = `<div class="row-label-col">Embarque</div>`;
   days.forEach(d=>{
     const cls = ["day-head"];
@@ -1949,7 +1990,7 @@ function renderConsolidated(){
     if(isHoliday(d)) cls.push("holiday");
     headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
   });
-  let html = `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};">${headerCells}</div>`;
+  let html = legendHtml + `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};">${headerCells}</div>`;
   rows.forEach(r=>{
     const visibleActs = r.acts.filter(a => {
       const s = a.start < monthStart ? monthStart : a.start;
@@ -1969,12 +2010,47 @@ function renderConsolidated(){
       const startIdx = Math.round((s - monthStart)/86400000) + 2;
       const endIdx = Math.round((e - monthStart)/86400000) + 3;
       const isCd = a.key === "ingreso_cd";
-      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" style="grid-column:${startIdx}/${endIdx}; grid-row:${a.lane}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" title="${a.label} — ${fmtDMY(a.start)}">${isCd ? "CD" : escapeHtml(a.label)}</div>`;
+      const fechaTexto = a.start.getTime() !== a.end.getTime() ? `${fmtDMY(a.start)} al ${fmtDMY(a.end)}` : fmtDMY(a.start);
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" 
+                     data-tip-emb="${escapeHtml(r.sh.nombre)}" 
+                     data-tip-act="${escapeHtml(a.label)}" 
+                     data-tip-resp="${escapeHtml(a.responsable)}" 
+                     data-tip-fecha="${escapeHtml(fechaTexto)}"
+                     style="grid-column:${startIdx}/${endIdx}; grid-row:${a.lane}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" 
+                     title="${escapeHtml(r.sh.nombre)} · ${escapeHtml(a.label)} (${escapeHtml(a.responsable)}) — ${fechaTexto}"></div>`;
     });
-    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols}; grid-template-rows:repeat(${maxLanes}, minmax(26px, auto)); row-gap:3px; margin-bottom:4px;">${cells}</div>`;
+    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols}; grid-template-rows:repeat(${maxLanes}, 20px); row-gap:3px; margin-bottom:4px;">${cells}</div>`;
   });
   if(gridEl) gridEl.innerHTML = html;
 }
+
+// Tooltip flotante instantáneo al pasar el mouse sobre las barras de Vista Consolidada
+(function bindConsolidadoHoverTooltip(){
+  let tip = document.getElementById("ganttFloatingTip");
+  if(!tip){
+    tip = document.createElement("div");
+    tip.id = "ganttFloatingTip";
+    tip.className = "gantt-floating-tip";
+    document.body.appendChild(tip);
+  }
+  document.addEventListener("mousemove", (e)=>{
+    const bar = e.target.closest("#consolidadoGrid .act-bar");
+    if(!bar){
+      tip.style.display = "none";
+      return;
+    }
+    tip.innerHTML = `
+      <div style="font-size:10.5px;color:#FFD966;font-weight:800;text-transform:uppercase;">${escapeHtml(bar.dataset.tipEmb || "")}</div>
+      <div style="font-weight:700;margin:2px 0;">${escapeHtml(bar.dataset.tipAct || "")}</div>
+      <div style="font-size:11px;color:#c7d1ea;">Responsable: <b>${escapeHtml(bar.dataset.tipResp || "")}</b> · ${escapeHtml(bar.dataset.tipFecha || "")}</div>
+    `;
+    tip.style.display = "block";
+    const x = Math.min(e.clientX + 14, window.innerWidth - 310);
+    const y = Math.min(e.clientY + 14, window.innerHeight - 90);
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  });
+})();
 function renderInputsTable(){
   const tbody = document.getElementById("shipmentsTbody");
   const emptyEl = document.getElementById("emptyShipments");
