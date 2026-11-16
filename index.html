@@ -416,6 +416,7 @@
     <button class="tab" data-view="microprocesos">🔬 Microprocesos y Tareas</button>
     <button class="tab" data-view="resumen">📑 Hoja de Resúmenes</button>
     <button class="tab" data-view="arribos_cd">🚚 Tabla de Arribos para CD</button>
+    <button class="tab" data-view="alertas_config">📧 Alertas y Correos</button>
   </div>
 </div>
 <div id="firebaseErrorBanner" style="display:none;" class="alerts-container no-print">
@@ -754,6 +755,41 @@
     <div class="empty" id="emptyArribosCD" style="display:none;margin-top:12px;">No hay embarques registrados con fecha aproximada de arribo al CD para el año/mes seleccionado.</div>
   </div>
 </div>
+<!-- ============ VIEW: ALERTAS Y CORREOS ============ -->
+<div class="view" id="view-alertas_config">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>📧 Configuración de Alertas y Envío de Correos por Área</h2>
+        <span class="muted" style="font-size:12px;">El sistema envía automáticamente a partir de las <b>9:00 AM en días laborables</b> (excluyendo fines de semana y feriados registrados) una vez por día. También puedes enviar recordatorios manuales en cualquier momento.</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="btnSaveEmailConfig" style="background:var(--navy);color:#fff;">💾 Guardar Destinatarios</button>
+        <button class="btn" id="btnSendAllNow" style="background:var(--accent);color:#fff;">🚀 Enviar a TODAS las áreas ahora</button>
+      </div>
+    </div>
+
+    <div id="emailLastSentBanner" style="background:#f6f8fc;border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span id="emailAutoStatusText">Estado automático (9:00 AM días laborables): Verificando...</span>
+      <button class="btn small ghost" id="btnResetDailyLock" style="color:var(--navy);background:#fff;border-color:#d0d7de;" title="Permite que el envío automático vuelva a ejecutarse hoy">↺ Restablecer bloqueo diario</button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:190px;">Área / Rol</th>
+            <th style="width:230px;">Alcance de Alertas</th>
+            <th>Correos Destinatarios (separados por punto y coma <code>;</code>)</th>
+            <th style="width:140px;text-align:center;">Pendientes Hoy / Atrasadas</th>
+            <th style="width:170px;text-align:center;">Acción Manual</th>
+          </tr>
+        </thead>
+        <tbody id="emailConfigTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 <footer class="hint no-print">
   <b>Modo Híbrido:</b> Sincronización en la nube con respaldo local autoguardado en tiempo real.
 </footer>
@@ -778,6 +814,8 @@ let holidaysRef = null;
 let microRef = null;
 let resumenRef = null;
 let arribosManualRef = null;
+let emailConfigRef = null;
+let emailLogRef = null;
 let connectedRef = null;
 function setSyncStatus(mode){
   const dot = document.getElementById("syncDot");
@@ -796,6 +834,7 @@ function saveLocalBackup(){
       microItems: microState.items,
       resumenMonths: resumenState.months,
       arribosManual: arribosManualState,
+      emailDestinatarios: emailConfigState.destinatarios,
       updatedAt: new Date().toISOString()
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
@@ -813,6 +852,7 @@ function loadLocalBackup(){
     if(payload.microItems) microState.items = payload.microItems;
     if(payload.resumenMonths) Object.assign(resumenState.months, payload.resumenMonths);
     if(payload.arribosManual) Object.assign(arribosManualState, payload.arribosManual);
+    if(payload.emailDestinatarios) Object.assign(emailConfigState.destinatarios, payload.emailDestinatarios);
     return true;
   }catch(e){
     console.error("Error cargando copia local:", e);
@@ -829,7 +869,25 @@ function initFirebase(){
     microRef = db.ref(FIREBASE_PATH + "/microprocesos");
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     arribosManualRef = db.ref(FIREBASE_PATH + "/arribos_cd_manual");
+    emailConfigRef = db.ref(FIREBASE_PATH + "/email_config");
+    emailLogRef = db.ref(FIREBASE_PATH + "/email_last_sent");
     connectedRef = db.ref(".info/connected");
+    emailConfigRef.on("value", (snap)=>{
+      const val = snap.val();
+      if(val && typeof val === "object"){
+        Object.assign(emailConfigState.destinatarios, val);
+        saveLocalBackup();
+        renderEmailConfigView();
+      }
+    });
+    emailLogRef.on("value", (snap)=>{
+      const val = snap.val();
+      if(val){
+        emailConfigState.lastAutoSentDate = val;
+        localStorage.setItem("ultimo_correo_alerta", val);
+        renderEmailConfigView();
+      }
+    });
     cloudMode = true;
     
     connectedRef.on("value", (snap)=>{
@@ -1113,6 +1171,65 @@ const GANTT_TO_MICRO_MAPPING = {
   "otn": ["Enviar número de OTN a COMEX"],
   "lpn": ["LPN", "Enviar LPN Embarque"]
 };
+const EMAIL_ROLES_DEF = [
+  {
+    key: "planificacion",
+    rol: "Planificación (Vista General)",
+    subtitulo: "Consolidado completo de todas las áreas y marcas",
+    defaultEmails: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com; katherin.chacon@mundodeportivo-ec.com",
+    filtrar: () => true
+  },
+  {
+    key: "producto_adidas",
+    rol: "Producto ADIDAS",
+    subtitulo: "Actividades de Producto · Marca Adidas y ADI & RBK",
+    defaultEmails: "silvia.vaca@mundodeportivo-ec.com",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "ADIDAS" || a.marca === "ADI_RBK")
+  },
+  {
+    key: "producto_reebok",
+    rol: "Producto REEBOK",
+    subtitulo: "Actividades de Producto · Marca Reebok y ADI & RBK",
+    defaultEmails: "francisco.larrea@mundodeportivo-ec.com; paola.berrazueta@mundodeportivo-ec.com",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "REEBOK" || a.marca === "ADI_RBK")
+  },
+  {
+    key: "comex",
+    rol: "COMEX",
+    subtitulo: "Actividades asignadas a Comercio Exterior",
+    defaultEmails: "",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("comex")
+  },
+  {
+    key: "tiendas",
+    rol: "Tiendas",
+    subtitulo: "Actividades asignadas a Distribución / Tiendas",
+    defaultEmails: "",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("tiendas")
+  },
+  {
+    key: "logistica",
+    rol: "Logística / CD",
+    subtitulo: "Actividades de ingreso a DEPCO y CD",
+    defaultEmails: "",
+    filtrar: (a) => (a.responsable || "").toLowerCase().includes("logística") || (a.responsable || "").toLowerCase().includes("logistica")
+  }
+];
+const emailConfigState = {
+  destinatarios: {},
+  lastAutoSentDate: localStorage.getItem("ultimo_correo_alerta") || ""
+};
+EMAIL_ROLES_DEF.forEach(r => { emailConfigState.destinatarios[r.key] = r.defaultEmails; });
+
+function getUniqueAlertsList(alertas){
+  const unicasMap = new Map();
+  (alertas || []).forEach(a => {
+    const key = `${a.shipmentId}||${a.barKey}`;
+    if (!unicasMap.has(key)) unicasMap.set(key, a);
+  });
+  return Array.from(unicasMap.values());
+}
+
 function getAlertsForShipment(sh){
   const alerts = [];
   const acts = computeActivities(sh);
@@ -1144,7 +1261,7 @@ function getAlertsForShipment(sh){
           alerts.push({
             barKey: a.key,
             activityLabel: a.label,
-            responsable: a.responsable, // <--- Se agrega el área responsable
+            responsable: a.responsable,
             taskLabel: task.act,
             dueDate: a.end,
             shipmentName: sh.nombre,
@@ -1226,7 +1343,6 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
       <div style="background:#ffffff;padding:18px 20px;border:1px solid #e1e5ee;border-top:none;border-radius:0 0 8px 8px;">
         <p style="margin:0 0 14px 0;font-size:13.5px;">Hola,</p>
         <p style="margin:0 0 16px 0;font-size:13.5px;">Se presenta el detalle de actividades pendientes y atrasadas correspondientes a su gestión:</p>
-        
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;border-collapse:collapse;">
           <tr>
             <td style="width:48%;padding:10px;background:#fff0f0;border:1px solid #ffccc7;border-radius:6px;text-align:center;">
@@ -1240,9 +1356,7 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
             </td>
           </tr>
         </table>
-
         ${bloquesHtml}
-
         <p style="margin:18px 0 0 0;font-size:12.5px;color:#68708a;border-top:1px solid #e1e5ee;padding-top:12px;">
           Por favor ingresar al sistema <b>Planificación de Embarques Medeport</b> para actualizar el estado de los microprocesos.<br><br>
           Saludos cordiales,<br>
@@ -1254,65 +1368,52 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
   return { html, totalAtrasadas, totalHoy };
 }
 
-function enviarAlertaPorPowerAutomate(alertas) {
-  if (!alertas || alertas.length === 0) return;
+function enviarAlertaPorPowerAutomate(alertas, options) {
+  const opts = options || {};
+  const isManual = !!opts.manual;
+  const targetRoleKey = opts.roleKey || null;
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const hoyStr = hoy.toISOString().slice(0, 10);
+  if (!alertas || alertas.length === 0) {
+    if (isManual) showToast("ℹ️ No hay actividades pendientes ni atrasadas para enviar", "error");
+    return;
+  }
 
-  if (localStorage.getItem("ultimo_correo_alerta") === hoyStr) return;
+  const ahora = new Date();
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const hoyStr = toISO(hoy);
 
-  // 1. Eliminar duplicados (mismo embarque + misma barra Gantt)
-  const unicasMap = new Map();
-  alertas.forEach(a => {
-    const key = `${a.shipmentId}||${a.barKey}`;
-    if (!unicasMap.has(key)) unicasMap.set(key, a);
-  });
-  const alertasUnicas = Array.from(unicasMap.values());
+  // Validación automática: solo días laborables (no fin de semana ni feriado) y a partir de las 9:00 AM
+  if (!isManual) {
+    if (isNonWorking(hoy)) return;
+    if (ahora.getHours() < 9) return;
+    const lastSent = emailConfigState.lastAutoSentDate || localStorage.getItem("ultimo_correo_alerta") || "";
+    if (lastSent === hoyStr) return;
+  }
 
-  // 2. Configuración de destinatarios por rol/área
-  const enviosPorRol = [
-    {
-      rol: "Planificación (Vista General)",
-      subtitulo: "Consolidado completo de todas las áreas y marcas",
-      destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com; katherin.chacon@mundodeportivo-ec.com",
-      filtrar: () => true // Recibe TODO
-    },
-    {
-      rol: "Producto ADIDAS",
-      subtitulo: "Actividades asignadas a Producto · Marca Adidas",
-      destinatario: "silvia.vaca@mundodeportivo-ec.com",
-      filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "ADIDAS" || a.marca === "ADI_RBK")
-    },
-    {
-      rol: "Producto REEBOK",
-      subtitulo: "Actividades asignadas a Producto · Marca Reebok",
-      destinatario: "francisco.larrea@mundodeportivo-ec.com; paola.berrazueta@mundodeportivo-ec.com",
-      filtrar: (a) => (a.responsable || "").toLowerCase().includes("producto") && (a.marca === "REEBOK" || a.marca === "ADI_RBK")
-    }
-    /* Puedes descomentar y agregar correos si deseas notificar también a otras áreas:
-    ,{
-      rol: "COMEX",
-      subtitulo: "Actividades asignadas a Comercio Exterior",
-      destinatario: "correo.comex@mundodeportivo-ec.com",
-      filtrar: (a) => (a.responsable || "").toLowerCase().includes("comex")
-    }
-    */
-  ];
-
+  const alertasUnicas = getUniqueAlertsList(alertas);
   const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Bftl1Cy-S_cvpjyC2b1KdS6dnNWVsWQgHUCZo3cayB8";
 
-  // 3. Disparar un correo personalizado únicamente a los roles que tengan alertas activas
+  const rolesAProcesar = targetRoleKey
+    ? EMAIL_ROLES_DEF.filter(r => r.key === targetRoleKey)
+    : EMAIL_ROLES_DEF;
+
   const promesas = [];
-  enviosPorRol.forEach(grupo => {
+  rolesAProcesar.forEach(grupo => {
+    const dest = (emailConfigState.destinatarios[grupo.key] || "").trim();
+    if (!dest) return;
     const alertasRol = alertasUnicas.filter(grupo.filtrar);
-    if (alertasRol.length === 0) return; // Si esa área no tiene pendientes, no se le envía correo
+    if (alertasRol.length === 0) {
+      if (isManual && targetRoleKey) {
+        showToast(`ℹ️ ${grupo.rol} no tiene pendientes hoy ni atrasados`);
+      }
+      return;
+    }
 
     const { html, totalAtrasadas, totalHoy } = construirHtmlCorreo(alertasRol, hoy, grupo.rol, grupo.subtitulo);
+    const prefijoAsunto = isManual ? "🔔 Recordatorio" : "⚠️ Alertas";
     const payload = {
-      destinatario: grupo.destinatario,
-      asunto: `⚠️ Alertas Embarques [${grupo.rol}] (${totalAtrasadas} atrasadas · ${totalHoy} hoy)`,
+      destinatario: dest,
+      asunto: `${prefijoAsunto} Embarques [${grupo.rol}] (${totalAtrasadas} atrasadas · ${totalHoy} hoy)`,
       mensaje: html
     };
 
@@ -1328,13 +1429,122 @@ function enviarAlertaPorPowerAutomate(alertas) {
   if (promesas.length > 0) {
     Promise.all(promesas)
       .then(() => {
-        console.log(`📧 Se enviaron ${promesas.length} reportes segmentados vía Outlook.`);
-        localStorage.setItem("ultimo_correo_alerta", hoyStr);
-        showToast(`📧 Notificaciones enviadas (${promesas.length} áreas notificadas)`);
+        if (!isManual) {
+          emailConfigState.lastAutoSentDate = hoyStr;
+          localStorage.setItem("ultimo_correo_alerta", hoyStr);
+          if (cloudMode && emailLogRef) emailLogRef.set(hoyStr).catch(()=>{});
+          renderEmailConfigView();
+        }
+        showToast(`📧 Correos enviados exitosamente (${promesas.length} área(s) notificada(s))`);
       })
-      .catch(err => console.error("Error al enviar las alertas:", err));
+      .catch(err => {
+        console.error("Error al enviar las alertas:", err);
+        showToast("❌ Error al conectar con Power Automate", "error");
+      });
+  } else if (isManual && !targetRoleKey) {
+    showToast("ℹ️ No hay áreas con destinatarios y tareas pendientes para enviar");
   }
 }
+
+function renderEmailConfigView(){
+  const tbody = document.getElementById("emailConfigTbody");
+  const statusEl = document.getElementById("emailAutoStatusText");
+  if(!tbody) return;
+
+  const ahora = new Date();
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const hoyStr = toISO(hoy);
+  const lastSent = emailConfigState.lastAutoSentDate || localStorage.getItem("ultimo_correo_alerta") || "";
+
+  if(statusEl){
+    if(isNonWorking(hoy)){
+      statusEl.innerHTML = `📅 Hoy (${fmtDMY(hoy)}) es <b>día no laborable</b> (fin de semana o feriado). El envío automático de las 9:00 AM está pausado.`;
+    } else if(lastSent === hoyStr){
+      statusEl.innerHTML = `✅ El envío automático de hoy (<b>${fmtDMY(hoy)}</b>) ya se realizó. Puedes usar los botones de envío manual para enviar recordatorios adicionales.`;
+    } else if(ahora.getHours() < 9){
+      statusEl.innerHTML = `⏰ Programado para enviarse automáticamente hoy (<b>${fmtDMY(hoy)}</b>) a partir de las <b>9:00 AM</b>.`;
+    } else {
+      statusEl.innerHTML = `🟡 Pendiente de disparo automático de las 9:00 AM para hoy (<b>${fmtDMY(hoy)}</b>).`;
+    }
+  }
+
+  let allAlerts = [];
+  getShipmentsArray().forEach(sh => { allAlerts = allAlerts.concat(getAlertsForShipment(sh)); });
+  const unicas = getUniqueAlertsList(allAlerts);
+
+  tbody.innerHTML = EMAIL_ROLES_DEF.map(r => {
+    const filtradas = unicas.filter(r.filtrar);
+    let atr = 0, h = 0;
+    filtradas.forEach(a => {
+      const d = new Date(a.dueDate); d.setHours(0,0,0,0);
+      if(d < hoy) atr++; else h++;
+    });
+    const val = emailConfigState.destinatarios[r.key] || "";
+    return `
+      <tr>
+        <td><b>${escapeHtml(r.rol)}</b></td>
+        <td class="muted" style="font-size:11.5px;">${escapeHtml(r.subtitulo)}</td>
+        <td>
+          <input type="text" class="email-role-input" data-rolekey="${r.key}" value="${escapeHtml(val)}" placeholder="correo1@mundodeportivo-ec.com; correo2@mundodeportivo-ec.com" style="width:100%;">
+        </td>
+        <td style="text-align:center;white-space:nowrap;">
+          <span class="pill" style="background:#fde3e3;color:#a81c1c;">🚨 ${atr}</span>
+          <span class="pill" style="background:#fff3cd;color:#856404;">📌 ${h}</span>
+        </td>
+        <td style="text-align:center;white-space:nowrap;">
+          <button class="btn small" data-sendrole="${r.key}" style="background:var(--navy);color:#fff;" ${filtradas.length===0 ? "disabled" : ""}>📨 Enviar recordatorio</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+document.addEventListener("click", (e)=>{
+  const btnSaveCfg = e.target.closest("#btnSaveEmailConfig");
+  if(btnSaveCfg){
+    document.querySelectorAll(".email-role-input").forEach(inp => {
+      emailConfigState.destinatarios[inp.dataset.rolekey] = inp.value.trim();
+    });
+    saveLocalBackup();
+    if(cloudMode && emailConfigRef){
+      emailConfigRef.set(emailConfigState.destinatarios).catch(err=>console.warn(err));
+    }
+    renderEmailConfigView();
+    showToast("💾 Destinatarios guardados y sincronizados");
+    return;
+  }
+
+  const btnAll = e.target.closest("#btnSendAllNow");
+  if(btnAll){
+    document.querySelectorAll(".email-role-input").forEach(inp => {
+      emailConfigState.destinatarios[inp.dataset.rolekey] = inp.value.trim();
+    });
+    let allAlerts = [];
+    getShipmentsArray().forEach(sh => { allAlerts = allAlerts.concat(getAlertsForShipment(sh)); });
+    enviarAlertaPorPowerAutomate(allAlerts, { manual: true });
+    return;
+  }
+
+  const btnRole = e.target.closest("button[data-sendrole]");
+  if(btnRole){
+    const rk = btnRole.dataset.sendrole;
+    const inp = document.querySelector(`.email-role-input[data-rolekey="${rk}"]`);
+    if(inp) emailConfigState.destinatarios[rk] = inp.value.trim();
+    let allAlerts = [];
+    getShipmentsArray().forEach(sh => { allAlerts = allAlerts.concat(getAlertsForShipment(sh)); });
+    enviarAlertaPorPowerAutomate(allAlerts, { manual: true, roleKey: rk });
+    return;
+  }
+
+  const btnResetLock = e.target.closest("#btnResetDailyLock");
+  if(btnResetLock){
+    emailConfigState.lastAutoSentDate = "";
+    localStorage.removeItem("ultimo_correo_alerta");
+    if(cloudMode && emailLogRef) emailLogRef.remove().catch(()=>{});
+    renderEmailConfigView();
+    showToast("↺ Bloqueo diario restablecido");
+  }
+});
 function checkAllAlerts(){
   const shipments = getShipmentsArray();
   let allAlerts = [];
@@ -1861,6 +2071,7 @@ function renderAll(){
   renderMicroprocesos();
   renderResumen();
   renderArribosCD();
+  renderEmailConfigView();
   checkAllAlerts();
 }
 function showToast(msg, kind){
@@ -1887,6 +2098,7 @@ function pushAllToFirebase(){
   microRef.set(microObj);
   resumenRef.set(resumenState.months);
   if(arribosManualRef) arribosManualRef.set(arribosManualState);
+  if(emailConfigRef) emailConfigRef.set(emailConfigState.destinatarios);
   showToast("🔄 Datos locales subidos exitosamente a Firebase");
 }
 function saveShipment(id, data){
@@ -2000,6 +2212,7 @@ document.querySelectorAll(".tab").forEach(tab=>{
     if(tab.dataset.view==="microprocesos") renderMicroprocesos();
     if(tab.dataset.view==="resumen") renderResumen();
     if(tab.dataset.view==="arribos_cd") renderArribosCD();
+    if(tab.dataset.view==="alertas_config") renderEmailConfigView();
     checkAllAlerts();
   });
 });
@@ -3516,6 +3729,7 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
    INICIALIZACIÓN
 ========================================================= */
 initFirebase();
+setInterval(checkAllAlerts, 60000);
 })();
 </script>
 </body>
