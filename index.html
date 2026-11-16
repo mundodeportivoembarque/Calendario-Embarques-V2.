@@ -238,6 +238,24 @@
     box-shadow:0 6px 18px rgba(10,15,35,.32);max-width:290px;display:none;
     border:1px solid rgba(255,255,255,.15);
   }
+  .tag-cd-change{
+    background:#fff0f0;color:#a81c1c;border:1px solid #ffccc7;font-weight:700;
+    padding:3px 9px;border-radius:6px;font-size:11px;cursor:pointer;
+  }
+  .tag-cd-change.delayed{background:#e6f4ff;color:#0b5aa8;border-color:#bae0ff;}
+  .act-bar.sla-risk{
+    outline:2px dashed #C55A11 !important;
+    outline-offset:1px;
+  }
+  .alert-banner.sla-warning{
+    background:#fff4e5;border-color:#ffd591;color:#873800;
+  }
+  .cd-history-list{
+    margin-top:8px;padding:8px 12px;background:#fafbfe;border:1px solid var(--line);border-radius:7px;font-size:11.5px;
+  }
+  .cd-history-list summary{cursor:pointer;font-weight:700;color:var(--navy);}
+  .cd-history-list ul{margin:6px 0 0 18px;padding:0;color:var(--ink);}
+  .cd-history-list li{margin-bottom:3px;}
   .act-bar.has-alert{
     animation: alertPulse 2s infinite;
     outline: 2px solid var(--danger) !important;
@@ -642,6 +660,22 @@
     <div class="modal-actions">
       <button class="btn" id="btnMicroCancel" style="background:#eee;">Cancelar</button>
       <button class="btn" id="btnMicroSave" style="background:var(--navy);color:#fff;">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL: MOTIVO CAMBIO DE FECHA CD (COMEX) ============ -->
+<div class="modal-overlay" id="cdChangeModal">
+  <div class="modal-box" style="max-width:520px;">
+    <h3 id="cdChangeModalTitle">🚚 Cambio de Fecha de Ingreso al CD (COMEX)</h3>
+    <p id="cdChangeSummaryText" style="margin:0 0 12px 0;font-size:13px;color:var(--ink);line-height:1.45;"></p>
+    <div id="cdSlaPreviewBox" style="display:none;background:#fff4e5;border:1px solid #ffd591;color:#873800;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"></div>
+    <div class="field">
+      <label>Motivo del cambio de fecha (COMEX)</label>
+      <input type="text" id="cdChangeReasonInput" placeholder="Ej. Adelanto de nave / Cambio itinerario / Aforo aduanero...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnCdChangeCancel" style="background:#eee;">Cancelar cambio</button>
+      <button class="btn" id="btnCdChangeConfirm" style="background:var(--navy);color:#fff;">💾 Confirmar y Registrar</button>
     </div>
   </div>
 </div>
@@ -1062,6 +1096,26 @@ function addBusinessDays(date, days){
   }
   return result;
 }
+function diffBusinessDays(fromDate, toDate){
+  if(!fromDate || !toDate) return 0;
+  const a = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const b = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  if(a.getTime() === b.getTime()) return 0;
+  const step = b > a ? 1 : -1;
+  let count = 0;
+  const cur = new Date(a.getTime());
+  while(cur.getTime() !== b.getTime()){
+    cur.setDate(cur.getDate() + step);
+    if(!isNonWorking(cur)) count += step;
+  }
+  return count;
+}
+function getTodayOrNextBusinessDay(){
+  const now = new Date();
+  const hoy = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if(!isNonWorking(hoy)) return hoy;
+  return addBusinessDays(hoy, 1);
+}
 function dateRange(start, end){
   const days = [];
   let cur = new Date(start.getTime());
@@ -1075,6 +1129,104 @@ const DOW_LETTERS = ["D","L","M","M","J","V","S"];
 function bar(key,label,resp,color,start,end,zone,textDark,bordered){
   return {key,label,responsable:resp,color,start,end:end||start,zone:zone||"main",textDark:!!textDark,bordered:!!bordered};
 }
+function isTaskCompleteForBrand(task, brand){
+  if(task.trackMode === "DUAL"){
+    if(brand === "ADIDAS") return task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+    if(brand === "REEBOK") return task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+    return (task.adidas_status === "COMPLETO" || task.adidas_status === "N/A") && (task.reebok_status === "COMPLETO" || task.reebok_status === "N/A");
+  }
+  if(task.trackMode === "ADIDAS_ONLY") return task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+  if(task.trackMode === "REEBOK_ONLY") return task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+  return task.status === "COMPLETO" || task.status === "N/A";
+}
+
+function isBarTaskCompletedInMicro(sh, barKey, barLabel, targetBrand){
+  const shMicroItems = microState.items.filter(it=> it.shipmentId === sh.id);
+  if(shMicroItems.length === 0) return false;
+  const possibleTaskNames = GANTT_TO_MICRO_MAPPING[barKey] || [barLabel];
+  const relatedTasks = shMicroItems.filter(t =>
+    possibleTaskNames.some(name => t.act && t.act.toLowerCase().includes(name.toLowerCase()))
+  );
+  if(relatedTasks.length === 0) return false;
+  return relatedTasks.every(task => isTaskCompleteForBrand(task, targetBrand || null));
+}
+
+function getCdDependentSpecs(tipo){
+  if(tipo === "CONSUMO"){
+    return [
+      { key: "intercompany", label: "Intercompany / Ingreso Mayorista", offset: -7 },
+      { key: "ocas", label: "OCAs / OCIs / Traslados / Etiquetas / LPN", offset: -4 },
+      { key: "lpn", label: "LPN", offset: -4 }
+    ];
+  }
+  if(tipo === "DEPCO"){
+    return [
+      { key: "intercompany", label: "Intercompany / Canal Mayorista", offset: -7 }
+    ];
+  }
+  return [
+    { key: "intercompany", label: "Intercompany / Mayorista / Precios", offset: -7 },
+    { key: "otn", label: "OTN / Traslados / Etiquetas / Microsite / LPN", offset: -4 }
+  ];
+}
+
+function evaluateCdAdjustment(sh, newCdStartDate){
+  const hoyEjecutable = getTodayOrNextBusinessDay();
+  const specs = getCdDependentSpecs(sh.tipo);
+  const currentActs = computeActivities(sh);
+  const results = [];
+
+  specs.forEach(sp => {
+    const prevAct = currentActs.find(a => a.key === sp.key);
+    const idealDate = addBusinessDays(newCdStartDate, sp.offset);
+    const alreadyDone = isBarTaskCompletedInMicro(sh, sp.key, sp.label);
+
+    if(alreadyDone){
+      // Si ya se completó en microprocesos, conservar su fecha real/previa sin moverla
+      const keepDate = prevAct ? prevAct.start : idealDate;
+      results.push({
+        key: sp.key,
+        label: sp.label,
+        offset: sp.offset,
+        idealDate,
+        assignedDate: keepDate,
+        clampedToToday: false,
+        slaDeficitDays: 0,
+        alreadyDone: true
+      });
+      return;
+    }
+
+    if(idealDate < hoyEjecutable){
+      // Anti-viaje al pasado: anclar automáticamente a HOY y calcular déficit contra el SLA del CD
+      const deficit = diffBusinessDays(idealDate, hoyEjecutable);
+      results.push({
+        key: sp.key,
+        label: sp.label,
+        offset: sp.offset,
+        idealDate,
+        assignedDate: hoyEjecutable,
+        clampedToToday: true,
+        slaDeficitDays: deficit,
+        alreadyDone: false
+      });
+    } else {
+      results.push({
+        key: sp.key,
+        label: sp.label,
+        offset: sp.offset,
+        idealDate,
+        assignedDate: idealDate,
+        clampedToToday: false,
+        slaDeficitDays: 0,
+        alreadyDone: false
+      });
+    }
+  });
+
+  return results;
+}
+
 function applyCustomDates(sh, acts){
   if(!sh.customDates) return acts;
   return acts.map(a=>{
@@ -1083,7 +1235,15 @@ function applyCustomDates(sh, acts){
       const start = parseISO(c.start);
       const end = parseISO(c.end || c.start);
       if(start && end){
-        return {...a, start, end, isCustom: true};
+        return {
+          ...a,
+          start,
+          end,
+          isCustom: true,
+          slaRisk: !!c.slaRisk,
+          slaDeficitDays: c.slaDeficitDays || 0,
+          idealDateStr: c.idealDate || ""
+        };
       }
     }
     return a;
@@ -1279,7 +1439,7 @@ EMAIL_ROLES_DEF.forEach(r => {
 function getUniqueAlertsList(alertas){
   const unicasMap = new Map();
   (alertas || []).forEach(a => {
-    const key = `${a.shipmentId}||${a.barKey}`;
+    const key = `${a.shipmentId}||${a.barKey}||${a.marca}`;
     if (!unicasMap.has(key)) unicasMap.set(key, a);
   });
   return Array.from(unicasMap.values());
@@ -1291,6 +1451,24 @@ function getAlertsForShipment(sh){
   const now = new Date();
   now.setHours(0,0,0,0);
   const shMicroItems = microState.items.filter(it=> it.shipmentId === sh.id);
+
+  const pushBrandAlert = (a, taskLabel, effectiveBrand) => {
+    alerts.push({
+      barKey: a.key,
+      activityLabel: a.label,
+      responsable: a.responsable,
+      taskLabel: taskLabel,
+      dueDate: a.end,
+      shipmentName: sh.nombre,
+      shipmentId: sh.id,
+      marca: effectiveBrand,
+      shipmentMarca: sh.marca,
+      slaRisk: !!a.slaRisk,
+      slaDeficitDays: a.slaDeficitDays || 0,
+      idealDateStr: a.idealDateStr || ""
+    });
+  };
+
   acts.forEach(a=>{
     const endDate = new Date(a.end.getTime());
     endDate.setHours(0,0,0,0);
@@ -1300,31 +1478,34 @@ function getAlertsForShipment(sh){
         possibleTaskNames.some(name => t.act && t.act.toLowerCase().includes(name.toLowerCase()))
       );
       relatedTasks.forEach(task => {
-        let isComplete = false;
-        if(task.trackMode === "DUAL"){
-          if(sh.marca === "ADIDAS") isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
-          else if(sh.marca === "REEBOK") isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
-          else isComplete = (task.adidas_status === "COMPLETO" || task.adidas_status === "N/A") && (task.reebok_status === "COMPLETO" || task.reebok_status === "N/A");
-        } else if(task.trackMode === "ADIDAS_ONLY"){
-          isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
-        } else if(task.trackMode === "REEBOK_ONLY"){
-          isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+        if(task.trackMode === "DUAL" || sh.marca === "ADI_RBK"){
+          const adDone = isTaskCompleteForBrand(task, "ADIDAS");
+          const rbDone = isTaskCompleteForBrand(task, "REEBOK");
+          if(!adDone) pushBrandAlert(a, task.act, "ADIDAS");
+          if(!rbDone) pushBrandAlert(a, task.act, "REEBOK");
         } else {
-          isComplete = task.status === "COMPLETO" || task.status === "N/A";
-        }
-        if(!isComplete){
-          alerts.push({
-            barKey: a.key,
-            activityLabel: a.label,
-            responsable: a.responsable,
-            taskLabel: task.act,
-            dueDate: a.end,
-            shipmentName: sh.nombre,
-            shipmentId: sh.id,
-            marca: sh.marca
-          });
+          const done = isTaskCompleteForBrand(task, sh.marca);
+          if(!done) pushBrandAlert(a, task.act, sh.marca);
         }
       });
+    }
+  });
+
+  // Verificar también actividades marcadas con déficit de SLA CD por adelanto COMEX
+  acts.forEach(a => {
+    if(a.slaRisk){
+      if(sh.marca === "ADI_RBK"){
+        if(!isBarTaskCompletedInMicro(sh, a.key, a.label, "ADIDAS") && !alerts.some(al => al.barKey === a.key && al.marca === "ADIDAS")){
+          pushBrandAlert(a, a.label, "ADIDAS");
+        }
+        if(!isBarTaskCompletedInMicro(sh, a.key, a.label, "REEBOK") && !alerts.some(al => al.barKey === a.key && al.marca === "REEBOK")){
+          pushBrandAlert(a, a.label, "REEBOK");
+        }
+      } else {
+        if(!isBarTaskCompletedInMicro(sh, a.key, a.label, sh.marca) && !alerts.some(al => al.barKey === a.key)){
+          pushBrandAlert(a, a.label, sh.marca);
+        }
+      }
     }
   });
   return alerts;
@@ -1342,18 +1523,22 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
     if (esAtrasada) totalAtrasadas++;
     else totalHoy++;
 
-    if (!grupos[a.shipmentId]) {
-      grupos[a.shipmentId] = {
+    const grpKey = `${a.shipmentId}||${a.marca}`;
+    if (!grupos[grpKey]) {
+      grupos[grpKey] = {
         nombre: a.shipmentName,
         marca: marcaLabel(a.marca),
         items: []
       };
     }
-    grupos[a.shipmentId].items.push({
+    grupos[grpKey].items.push({
       actividad: a.activityLabel,
       responsable: a.responsable || "Planificación",
       fecha: fmtDMY(a.dueDate),
-      esAtrasada
+      esAtrasada,
+      slaRisk: !!a.slaRisk,
+      slaDeficitDays: a.slaDeficitDays || 0,
+      idealDateFmt: a.idealDateStr ? fmtDMY(parseISO(a.idealDateStr)) : ""
     });
   });
 
@@ -1363,15 +1548,22 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
     let filasHtml = "";
 
     g.items.forEach(it => {
-      const estadoBadge = it.esAtrasada
-        ? `<span style="background:#fde3e3;color:#a81c1c;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">🚨 ATRASADA (${it.fecha})</span>`
-        : `<span style="background:#fff3cd;color:#856404;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">📌 VENCE HOY (${it.fecha})</span>`;
+      const estadoBadge = it.slaRisk
+        ? `<span style="background:#fff4e5;color:#873800;border:1px solid #ffd591;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">⏱️ FUERA DE TIEMPO CD · HOY (${it.fecha})</span>`
+        : (it.esAtrasada
+          ? `<span style="background:#fde3e3;color:#a81c1c;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">🚨 ATRASADA (${it.fecha})</span>`
+          : `<span style="background:#fff3cd;color:#856404;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:11px;">📌 VENCE HOY (${it.fecha})</span>`);
+
+      const slaNote = it.slaRisk
+        ? `<div style="font-size:11px;color:#b74b00;margin-top:2px;">⚠️ Adelanto COMEX: no se cumple margen estándar del CD (debía enviarse el ${it.idealDateFmt} · déficit ${it.slaDeficitDays} día(s)).</div>`
+        : "";
 
       filasHtml += `
         <tr>
           <td style="padding:8px 10px;border-bottom:1px solid #e1e5ee;color:#1c2333;font-size:13px;">
             ${escapeHtml(it.actividad)}
             <div style="font-size:11px;color:#68708a;margin-top:2px;">Área responsable: <b>${escapeHtml(it.responsable)}</b></div>
+            ${slaNote}
           </td>
           <td style="padding:8px 10px;border-bottom:1px solid #e1e5ee;text-align:right;white-space:nowrap;vertical-align:middle;">${estadoBadge}</td>
         </tr>`;
@@ -1655,7 +1847,7 @@ function checkAllAlerts(){
   const shipments = getShipmentsArray();
   let allAlerts = [];
   shipments.forEach(sh=>{
-    const shAlerts = getAlertsForShipment(sh);
+    const shAlerts = getAlertsForShipment(sh).filter(alt => !brandContext || alt.marca === brandContext);
     allAlerts = allAlerts.concat(shAlerts);
   });
   renderAlertsUI(allAlerts);
@@ -1672,7 +1864,13 @@ function renderAlertsUI(alerts){
   const alertsFor = (vk, arr) => arr.filter(a=> shipmentMatchesFilter(vk, state.shipmentsMap[a.shipmentId]));
   const buildBanner = (filtered, title) => {
     if(filtered.length === 0) return "";
-    const list = filtered.map(a=>`<li><b>${escapeHtml(a.shipmentName)}</b> (${marcaLabel(a.marca)}): La actividad <i>"${escapeHtml(a.activityLabel)}"</i> debió completarse el ${fmtDMY(a.dueDate)}.</li>`).join("");
+    const list = filtered.map(a=>{
+      if(a.slaRisk){
+        const idealFmt = a.idealDateStr ? fmtDMY(parseISO(a.idealDateStr)) : "antes";
+        return `<li><b>${escapeHtml(a.shipmentName)}</b> (${marcaLabel(a.marca)}): ⏱️ <b>Riesgo SLA con CD (Adelanto COMEX)</b> — <i>"${escapeHtml(a.activityLabel)}"</i> debía enviarse el ${idealFmt} (déficit de <b>${a.slaDeficitDays} día(s) hábil(es)</b>). Reprogramada para <b>${fmtDMY(a.dueDate)}</b>.</li>`;
+      }
+      return `<li><b>${escapeHtml(a.shipmentName)}</b> [<span style="font-weight:800;color:${a.marca==='ADIDAS'?'#C00000':'#0d4a8c'};">${marcaLabel(a.marca)}</span>]: La actividad <i>"${escapeHtml(a.activityLabel)}"</i> debió completarse el ${fmtDMY(a.dueDate)}.</li>`;
+    }).join("");
     return `
       <div class="alert-banner danger">
         <span class="alert-icon">⚠️</span>
@@ -1729,7 +1927,7 @@ function arrivalSelectHtml(shipmentId, currentStatus){
     <option value="YA ARRIBÓ" ${st==="YA ARRIBÓ"?"selected":""}>✅ YA ARRIBÓ</option>
   </select>`;
 }
-function renderShipmentGantt(sh){
+function renderShipmentGantt(sh, brandContext){
   const acts = computeActivities(sh);
   if(acts.length === 0){
     return `<div class="shipment-block"><div class="empty">Falta la fecha de instrucción de producto.</div></div>`;
@@ -1763,7 +1961,7 @@ function renderShipmentGantt(sh){
       const startIdx = Math.round((a.start - minDate)/86400000)+1;
       const endIdx = Math.round((a.end - minDate)/86400000)+2;
       const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
-      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''} ${a.isCustom?'is-custom':''} ${hasAlert?'has-alert':''}" 
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''} ${a.isCustom?'is-custom':''} ${hasAlert?'has-alert':''} ${a.slaRisk?'sla-risk':''}" 
                      draggable="true" 
                      data-shipment-id="${sh.id}" 
                      data-bar-key="${a.key}" 
@@ -1784,7 +1982,7 @@ function renderShipmentGantt(sh){
     return `
     <tr>
       <td><span class="sw" style="background:${a.color};"></span></td>
-      <td>${escapeHtml(a.label)}${a.isCustom ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;">(Manual)</span>' : ''}${hasAlert ? ' <span style="font-size:10px;color:var(--danger);font-weight:700;">⚠️ Incompleto</span>' : ''}</td>
+      <td>${escapeHtml(a.label)}${a.isCustom ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;">(Manual)</span>' : ''}${a.slaRisk ? ` <span style="font-size:10px;color:#b74b00;font-weight:700;">⏱️ Fuera de ventana CD (-${a.slaDeficitDays}d)</span>` : ''}${hasAlert && !a.slaRisk ? ' <span style="font-size:10px;color:var(--danger);font-weight:700;">⚠️ Incompleto</span>' : ''}</td>
       <td>${RESPONSABLE_HORA}</td>
       <td>${a.responsable}</td>
       <td>${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' — '+fmtDMY(a.end):''}</td>
@@ -1802,6 +2000,12 @@ function renderShipmentGantt(sh){
       ${sh.consolidado ? `<span class="tag-consol">${escapeHtml(sh.consolidado)}</span>` : ""}
       ${arrivalSelectHtml(sh.id, arrivalStatus)}
       <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b> · Arribo CD (aprox.): <b>${cdDateEst ? fmtDMY(cdDateEst) : "—"}</b></span>
+      ${Array.isArray(sh.cdChangeLog) && sh.cdChangeLog.length ? (() => {
+        const last = sh.cdChangeLog[sh.cdChangeLog.length - 1];
+        const isDelay = last.deltaDias > 0;
+        const sign = last.deltaDias > 0 ? `+${last.deltaDias}` : `${last.deltaDias}`;
+        return `<span class="tag-cd-change ${isDelay ? 'delayed' : ''}" title="Motivo: ${escapeHtml(last.motivo)}">🔄 Cambio CD: ${sign}d (${fmtDMY(parseISO(last.fechaAnterior))} → ${fmtDMY(parseISO(last.fechaNueva))})</span>`;
+      })() : ''}
       ${hasCustomDates ? `<button class="btn small ghost" data-action="reset-dates" data-id="${sh.id}" style="color:var(--navy);background:#fff;border-color:#d0d7de;">↺ Restablecer fechas</button>` : ''}
     </div>
     <div class="gantt-scroll">
@@ -1815,6 +2019,18 @@ function renderShipmentGantt(sh){
         <thead><tr><th></th><th>Actividad</th><th>Hora límite</th><th>Responsable</th><th>Fecha</th></tr></thead>
         <tbody>${legendRows}</tbody>
       </table>
+      ${Array.isArray(sh.cdChangeLog) && sh.cdChangeLog.length ? `
+        <details class="cd-history-list">
+          <summary>📋 Historial de cambios de fecha CD por COMEX (${sh.cdChangeLog.length})</summary>
+          <ul>
+            ${sh.cdChangeLog.map(c => {
+              const sgn = c.deltaDias > 0 ? `+${c.deltaDias}` : `${c.deltaDias}`;
+              const dtReg = c.registradoEn ? c.registradoEn.slice(0,10) : "";
+              return `<li><b>${fmtDMY(parseISO(c.fechaAnterior))} → ${fmtDMY(parseISO(c.fechaNueva))}</b> (${sgn} día(s) hábil(es)) · <i>Motivo:</i> "${escapeHtml(c.motivo)}" <span class="muted">(${dtReg})</span></li>`;
+            }).join("")}
+          </ul>
+        </details>
+      ` : ""}
     </div>
   </div>`;
 }
@@ -1835,7 +2051,7 @@ function renderBrandView(marca, containerId){
       : `<div class="empty">No hay embarques de ${marcaLabel(marca)} registrados.</div>`;
     return;
   }
-  container.innerHTML = list.map(renderShipmentGantt).join("");
+  container.innerHTML = list.map(s => renderShipmentGantt(s, marca)).join("");
   bindGanttDragAndDrop();
 }
 let draggedBarPayload = null;
@@ -1881,6 +2097,25 @@ function bindGanttDragAndDrop(){
       const newEnd = new Date(targetDate.getTime() + (data.duration * 86400000));
       const sh = state.shipmentsMap[data.shipmentId];
       if(!sh) return;
+
+      if(data.barKey === "ingreso_cd"){
+        const oldCd = getEstimatedCDDate(sh);
+        if(oldCd && toISO(oldCd) !== toISO(newStart)){
+          const delta = diffBusinessDays(oldCd, newStart);
+          const adjustments = evaluateCdAdjustment(sh, newStart);
+          openCdChangeModal({
+            source: "gantt",
+            id: data.shipmentId,
+            sh: sh,
+            oldCdDate: oldCd,
+            newCdDate: newStart,
+            deltaBusinessDays: delta,
+            adjustments
+          });
+          return;
+        }
+      }
+
       if(!sh.customDates) sh.customDates = {};
       sh.customDates[data.barKey] = {
         start: toISO(newStart),
@@ -1907,6 +2142,7 @@ document.addEventListener("click", (e)=>{
   const sh = state.shipmentsMap[id];
   if(sh && confirm("¿Deseas restablecer todas las fechas calculadas automáticamente para este embarque?")){
     delete sh.customDates;
+    delete sh.cdChangeLog;
     saveShipment(id, sh);
     renderAll();
     showToast("↺ Fechas automáticas restablecidas");
@@ -2285,14 +2521,124 @@ function saveHolidays(list){
   }
   renderAll();
 }
+let pendingCdChangeContext = null;
+
+function openCdChangeModal(ctx){
+  pendingCdChangeContext = ctx;
+  const modal = document.getElementById("cdChangeModal");
+  const summaryEl = document.getElementById("cdChangeSummaryText");
+  const slaBox = document.getElementById("cdSlaPreviewBox");
+  const reasonInp = document.getElementById("cdChangeReasonInput");
+
+  const deltaTxt = ctx.deltaBusinessDays < 0
+    ? `<span style="color:#C00000;font-weight:800;">Adelanto de ${Math.abs(ctx.deltaBusinessDays)} día(s) hábil(es)</span>`
+    : `<span style="color:#0b5aa8;font-weight:800;">Aplazamiento de +${ctx.deltaBusinessDays} día(s) hábil(es)</span>`;
+
+  summaryEl.innerHTML = `Embarque <b>${escapeHtml(ctx.sh.nombre)}</b> (${marcaLabel(ctx.sh.marca)}):<br>
+    Fecha anterior CD: <b>${fmtDMY(ctx.oldCdDate)}</b> &rarr; Nueva fecha CD: <b>${fmtDMY(ctx.newCdDate)}</b> (${deltaTxt}).`;
+
+  const clampedItems = ctx.adjustments.filter(x => x.clampedToToday);
+  if(clampedItems.length > 0){
+    const itemsHtml = clampedItems.map(x =>
+      `<li><b>${escapeHtml(x.label)}</b>: debía enviarse el <b>${fmtDMY(x.idealDate)}</b> (${Math.abs(x.offset)} días hábiles antes del CD). Se ajustará automáticamente a <b>HOY (${fmtDMY(x.assignedDate)})</b> con un déficit de <b>${x.slaDeficitDays} día(s) hábil(es)</b> respecto al tiempo estándar del CD.</li>`
+    ).join("");
+    slaBox.innerHTML = `<b>⚠️ Alerta de tiempo establecido por el CD:</b><ul style="margin:5px 0 0 18px;padding:0;">${itemsHtml}</ul>`;
+    slaBox.style.display = "block";
+  } else {
+    slaBox.style.display = "none";
+  }
+
+  reasonInp.value = "";
+  modal.classList.add("open");
+  setTimeout(()=> reasonInp.focus(), 50);
+}
+
+function closeCdChangeModal(revertRender){
+  document.getElementById("cdChangeModal").classList.remove("open");
+  pendingCdChangeContext = null;
+  if(revertRender) renderAll();
+}
+
+document.getElementById("btnCdChangeCancel").addEventListener("click", ()=> closeCdChangeModal(true));
+
+document.getElementById("btnCdChangeConfirm").addEventListener("click", ()=>{
+  if(!pendingCdChangeContext) return;
+  const ctx = pendingCdChangeContext;
+  const motivo = document.getElementById("cdChangeReasonInput").value.trim() || "Cambio de fecha reportado por COMEX";
+  const sh = ctx.sh;
+
+  if(!sh.customDates) sh.customDates = {};
+  const cdEnd = addBusinessDays(ctx.newCdDate, 2);
+  sh.customDates["ingreso_cd"] = {
+    start: toISO(ctx.newCdDate),
+    end: toISO(cdEnd)
+  };
+  if(ctx.source === "form"){
+    sh.fechaArriboCD = toISO(ctx.newCdDate);
+  }
+
+  // Aplicar reajuste automático sin viajar al pasado
+  ctx.adjustments.forEach(adj => {
+    sh.customDates[adj.key] = {
+      start: toISO(adj.assignedDate),
+      end: toISO(adj.assignedDate),
+      slaRisk: adj.clampedToToday,
+      slaDeficitDays: adj.slaDeficitDays,
+      idealDate: toISO(adj.idealDate)
+    };
+  });
+
+  // Guardar bitácora del cambio COMEX
+  if(!Array.isArray(sh.cdChangeLog)) sh.cdChangeLog = [];
+  sh.cdChangeLog.push({
+    fechaAnterior: toISO(ctx.oldCdDate),
+    fechaNueva: toISO(ctx.newCdDate),
+    deltaDias: ctx.deltaBusinessDays,
+    motivo: motivo,
+    registradoEn: new Date().toISOString()
+  });
+
+  const hasSlaRisk = ctx.adjustments.some(a => a.clampedToToday);
+  closeCdChangeModal(false);
+  saveShipment(ctx.id, sh);
+  if(ctx.source === "form") clearForm();
+
+  if(hasSlaRisk){
+    showToast("⚠️ Fecha CD actualizada · Alerta de incumplimiento de margen CD generada", "error");
+  } else {
+    showToast("✅ Cambio de fecha CD y motivo registrados");
+  }
+});
+
 document.getElementById("btnAddShipment").addEventListener("click", ()=>{
   const data = readForm();
   if(!data.nombre){ alert("Ingresa el nombre del embarque."); return; }
   if(!data.fechaInstruccion){ alert("Ingresa la fecha de instrucción de producto."); return; }
   const id = state.editingId || generateId();
+
   if(state.editingId && state.shipmentsMap[id]){
-    if(state.shipmentsMap[id].customDates) data.customDates = state.shipmentsMap[id].customDates;
-    if(state.shipmentsMap[id].estadoArribo) data.estadoArribo = state.shipmentsMap[id].estadoArribo;
+    const prevSh = state.shipmentsMap[id];
+    if(prevSh.customDates) data.customDates = JSON.parse(JSON.stringify(prevSh.customDates));
+    if(prevSh.estadoArribo) data.estadoArribo = prevSh.estadoArribo;
+    if(prevSh.cdChangeLog) data.cdChangeLog = JSON.parse(JSON.stringify(prevSh.cdChangeLog));
+
+    const oldCd = getEstimatedCDDate(prevSh);
+    // Si cambió fechaArriboCD en el formulario respecto a la fecha anterior
+    if(data.fechaArriboCD && oldCd && toISO(oldCd) !== data.fechaArriboCD){
+      const newCd = parseISO(data.fechaArriboCD);
+      const delta = diffBusinessDays(oldCd, newCd);
+      const adjustments = evaluateCdAdjustment({...prevSh, ...data, id}, newCd);
+      openCdChangeModal({
+        source: "form",
+        id,
+        sh: {...prevSh, ...data, id},
+        oldCdDate: oldCd,
+        newCdDate: newCd,
+        deltaBusinessDays: delta,
+        adjustments
+      });
+      return;
+    }
   }
   saveShipment(id, data);
   clearForm();
