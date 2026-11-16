@@ -889,10 +889,7 @@ function initFirebase(){
           }
         });
         saveLocalBackup();
-        const ae = document.activeElement;
-        if(!(ae && ae.classList && ae.classList.contains("email-role-input"))){
-          renderEmailConfigView();
-        }
+        renderEmailConfigView(true);
       }
     });
     emailLogRef.on("value", (snap)=>{
@@ -1481,7 +1478,7 @@ function enviarAlertaPorPowerAutomate(alertas, options) {
   }
 }
 
-function renderEmailConfigView(){
+function renderEmailConfigView(forceSyncInputs){
   const tbody = document.getElementById("emailConfigTbody");
   const statusEl = document.getElementById("emailAutoStatusText");
   if(!tbody) return;
@@ -1507,35 +1504,53 @@ function renderEmailConfigView(){
   getShipmentsArray().forEach(sh => { allAlerts = allAlerts.concat(getAlertsForShipment(sh)); });
   const unicas = getUniqueAlertsList(allAlerts);
 
-  tbody.innerHTML = EMAIL_ROLES_DEF.map(r => {
+  // Construir filas solo la primera vez para no destruir nunca los inputs escritos por el usuario
+  if(!tbody.dataset.built){
+    tbody.innerHTML = EMAIL_ROLES_DEF.map(r => {
+      const val = emailConfigState.destinatarios[r.key] || "";
+      const ccVal = emailConfigState.cc[r.key] || "";
+      return `
+        <tr data-rowrole="${r.key}">
+          <td><b>${escapeHtml(r.rol)}</b></td>
+          <td class="muted" style="font-size:11.5px;">${escapeHtml(r.subtitulo)}</td>
+          <td>
+            <input type="text" class="email-role-input" data-kind="to" data-rolekey="${r.key}" value="${escapeHtml(val)}" placeholder="principal@mundodeportivo-ec.com" style="width:100%;">
+          </td>
+          <td>
+            <input type="text" class="email-role-input" data-kind="cc" data-rolekey="${r.key}" value="${escapeHtml(ccVal)}" placeholder="copia@mundodeportivo-ec.com" style="width:100%;">
+          </td>
+          <td class="role-counts-cell" style="text-align:center;white-space:nowrap;"></td>
+          <td style="text-align:center;white-space:nowrap;">
+            <button class="btn small" data-sendrole="${r.key}" style="background:var(--navy);color:#fff;">📨 Enviar recordatorio</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+    tbody.dataset.built = "1";
+  }
+
+  EMAIL_ROLES_DEF.forEach(r => {
+    const tr = tbody.querySelector(`tr[data-rowrole="${r.key}"]`);
+    if(!tr) return;
+    if(forceSyncInputs){
+      const toInp = tr.querySelector(`input[data-kind="to"]`);
+      const ccInp = tr.querySelector(`input[data-kind="cc"]`);
+      if(toInp && document.activeElement !== toInp) toInp.value = emailConfigState.destinatarios[r.key] || "";
+      if(ccInp && document.activeElement !== ccInp) ccInp.value = emailConfigState.cc[r.key] || "";
+    }
     const filtradas = unicas.filter(r.filtrar);
     let atr = 0, h = 0;
     filtradas.forEach(a => {
       const d = new Date(a.dueDate); d.setHours(0,0,0,0);
       if(d < hoy) atr++; else h++;
     });
-    const val = emailConfigState.destinatarios[r.key] || "";
-    const ccVal = emailConfigState.cc[r.key] || "";
-    return `
-      <tr>
-        <td><b>${escapeHtml(r.rol)}</b></td>
-        <td class="muted" style="font-size:11.5px;">${escapeHtml(r.subtitulo)}</td>
-        <td>
-          <input type="text" class="email-role-input" data-kind="to" data-rolekey="${r.key}" value="${escapeHtml(val)}" placeholder="principal@mundodeportivo-ec.com" style="width:100%;">
-        </td>
-        <td>
-          <input type="text" class="email-role-input" data-kind="cc" data-rolekey="${r.key}" value="${escapeHtml(ccVal)}" placeholder="copia@mundodeportivo-ec.com" style="width:100%;">
-        </td>
-        <td style="text-align:center;white-space:nowrap;">
-          <span class="pill" style="background:#fde3e3;color:#a81c1c;">🚨 ${atr}</span>
-          <span class="pill" style="background:#fff3cd;color:#856404;">📌 ${h}</span>
-        </td>
-        <td style="text-align:center;white-space:nowrap;">
-          <button class="btn small" data-sendrole="${r.key}" style="background:var(--navy);color:#fff;" ${filtradas.length===0 ? "disabled" : ""}>📨 Enviar recordatorio</button>
-        </td>
-      </tr>
-    `;
-  }).join("");
+    const countsCell = tr.querySelector(".role-counts-cell");
+    if(countsCell){
+      countsCell.innerHTML = `<span class="pill" style="background:#fde3e3;color:#a81c1c;">🚨 ${atr}</span> <span class="pill" style="background:#fff3cd;color:#856404;">📌 ${h}</span>`;
+    }
+    const btn = tr.querySelector(`button[data-sendrole="${r.key}"]`);
+    if(btn) btn.disabled = (filtradas.length === 0);
+  });
 }
 
 document.addEventListener("input", (e)=>{
@@ -1551,13 +1566,15 @@ document.addEventListener("change", (e)=>{
   const inp = e.target.closest(".email-role-input");
   if(!inp) return;
   const rk = inp.dataset.rolekey;
-  if(inp.dataset.kind === "cc") emailConfigState.cc[rk] = inp.value.trim();
-  else emailConfigState.destinatarios[rk] = inp.value.trim();
+  const kind = inp.dataset.kind === "cc" ? "cc" : "to";
+  const cleanVal = inp.value.trim();
+  if(kind === "cc") emailConfigState.cc[rk] = cleanVal;
+  else emailConfigState.destinatarios[rk] = cleanVal;
   saveLocalBackup();
   if(cloudMode && emailConfigRef){
-    emailConfigRef.set({ to: emailConfigState.destinatarios, cc: emailConfigState.cc }).catch(err=>console.warn(err));
+    emailConfigRef.child(kind).child(rk).set(cleanVal).catch(err=>console.warn(err));
   }
-  showToast("💾 Correo actualizado");
+  showToast("💾 Correo guardado");
 });
 
 document.addEventListener("click", (e)=>{
