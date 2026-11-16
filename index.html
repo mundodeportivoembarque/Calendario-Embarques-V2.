@@ -1658,6 +1658,8 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
   return { html, totalAtrasadas, totalHoy };
 }
 
+let emailSendingActive = false;
+
 function enviarAlertaPorPowerAutomate(alertas, options) {
   const opts = options || {};
   const isManual = !!opts.manual;
@@ -1678,6 +1680,12 @@ function enviarAlertaPorPowerAutomate(alertas, options) {
     if (ahora.getHours() < 9) return;
     const lastSent = emailConfigState.lastAutoSentDate || localStorage.getItem("ultimo_correo_alerta") || "";
     if (lastSent === hoyStr) return;
+    if (emailSendingActive) return;
+    emailSendingActive = true;
+    localStorage.setItem("ultimo_correo_alerta", hoyStr);
+    if(cloudMode && emailLogRef){
+      emailLogRef.transaction(current => (current === hoyStr ? undefined : hoyStr));
+    }
   }
 
   const alertasUnicas = getUniqueAlertsList(alertas);
@@ -1721,20 +1729,23 @@ function enviarAlertaPorPowerAutomate(alertas, options) {
   if (promesas.length > 0) {
     Promise.all(promesas)
       .then(() => {
+        emailSendingActive = false;
         if (!isManual) {
           emailConfigState.lastAutoSentDate = hoyStr;
-          localStorage.setItem("ultimo_correo_alerta", hoyStr);
-          if (cloudMode && emailLogRef) emailLogRef.set(hoyStr).catch(()=>{});
           renderEmailConfigView();
         }
         showToast(`📧 Correos enviados exitosamente (${promesas.length} área(s) notificada(s))`);
       })
       .catch(err => {
+        emailSendingActive = false;
         console.error("Error al enviar las alertas:", err);
         showToast("❌ Error al conectar con Power Automate", "error");
       });
-  } else if (isManual && !targetRoleKey) {
-    showToast("ℹ️ No hay áreas con destinatarios y tareas pendientes para enviar");
+  } else {
+    emailSendingActive = false;
+    if (isManual && !targetRoleKey) {
+      showToast("ℹ️ no hay áreas con destinatarios y tareas pendientes para enviar");
+    }
   }
 }
 
