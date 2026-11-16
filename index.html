@@ -442,7 +442,7 @@
         <input type="text" id="f_nombre" placeholder="PANAMA 48">
       </div>
       <div class="field">
-        <label>Tipo</label>
+        <label>Régimen</label>
         <select id="f_tipo"><option value="CONSUMO">CONSUMO</option><option value="DEPCO">DEPCO</option><option value="CONSOLIDADO_OTN">CONSOLIDADO (Salida OTN)</option></select>
       </div>
       <div class="field">
@@ -475,7 +475,7 @@
       <table>
         <thead>
           <tr>
-            <th>Marca</th><th>Embarque</th><th>Tipo</th><th>Consolidado</th>
+            <th>Marca</th><th>Embarque</th><th>Régimen</th><th>Consolidado</th>
             <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD (Aprox.)</th><th>Estado CD</th><th>Acciones</th>
           </tr>
         </thead>
@@ -3566,7 +3566,7 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
 });
 document.getElementById("btnExportResumen").addEventListener("click", () => {
   const rawList = getResumenRowsForMonth(resumenState.mes);
-  const header = ["BLOQUE", "MES ARRIBO CD", "EMBARQUE", "TIPO", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
+  const header = ["BLOQUE", "MES ARRIBO CD", "EMBARQUE", "RÉGIMEN", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
   const aoa = [header];
   rawList.forEach(r => {
     const shInfo = (resumenBlockOf(r) === "INGRESOS EMBARQUE") ? findShipmentInfo(r.embarque) : null;
