@@ -3674,14 +3674,22 @@ function tryParseFormatC(aoa, mes, log){
     }
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
+    
+    // Si hay bodega explícita en 2 columnas, registrar salida positiva en OUT_<BODEGA>
     if(bodega){
       const outKey = "OUT_" + bodega;
-      targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + cantidad;
-    } else if(intercompany){
-      targetRow.channels["OUT_TRANS"] = (targetRow.channels["OUT_TRANS"] || 0) + cantidad;
+      targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + Math.abs(cantidad);
+    } else if(!dosColumnas && INTERCOMPANY_BODEGAS.includes(concepto) && cantidad < 0){
+      // Si viene en 1 sola columna con signo negativo (ej. TRANS: -6792), mover a SALIDA BODEGAS en positivo
+      const outKey = "OUT_" + concepto;
+      targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + Math.abs(cantidad);
+      concepto = null; // Evita sumarlo también en Ingreso Bodegas
+    } else if(intercompany && !INTERCOMPANY_BODEGAS.includes(concepto)){
+      targetRow.channels["OUT_TRANS"] = (targetRow.channels["OUT_TRANS"] || 0) + Math.abs(cantidad);
     }
+    
     if(concepto){
-      targetRow.channels[concepto] = (targetRow.channels[concepto] || 0) + cantidad;
+      targetRow.channels[concepto] = (targetRow.channels[concepto] || 0) + Math.abs(cantidad);
     }
     count++;
   }
@@ -3921,18 +3929,39 @@ function renderResumenThead(visibleFamilies){
     </tr>`;
 }
 function applyConsolidadosSalidaDepco(){
+  let huboCambios = false;
   Object.keys(resumenState.months || {}).forEach(mes => {
     (resumenState.months[mes] || []).forEach(r => {
-      if(resumenBlockOf(r) === "INGRESOS EMBARQUE"){
+      const block = resumenBlockOf(r);
+      
+      // 1. Lógica existente para Consolidados (Salida OTN -> OUT_DEPCO)
+      if(block === "INGRESOS EMBARQUE"){
         const shInfo = findShipmentInfo(r.embarque);
         const isConsol = (shInfo && shInfo.tipo === "CONSOLIDADO_OTN") || normTxt(r.embarque).includes("CONSOLIDADO");
         if(isConsol){
           const tot = rowCantidadTotal(r);
-          r.channels["OUT_DEPCO"] = tot;
+          if(r.channels["OUT_DEPCO"] !== tot){
+            r.channels["OUT_DEPCO"] = tot;
+            huboCambios = true;
+          }
         }
+      }
+      
+      // 2. Nueva lógica: Mover salidas negativas de bodegas en INTERCOMPANIES a SALIDA BODEGAS (en positivo)
+      if(block === "INTERCOMPANIES" && r.channels){
+        ["TRANS", "DEPSI", "DEPCO"].forEach(bod => {
+          const val = Number(r.channels[bod]) || 0;
+          if(val < 0){
+            const outKey = "OUT_" + bod;
+            r.channels[outKey] = (Number(r.channels[outKey]) || 0) + Math.abs(val);
+            r.channels[bod] = 0;
+            huboCambios = true;
+          }
+        });
       }
     });
   });
+  if(huboCambios) saveLocalBackup();
 }
 
 function renderResumen(){
