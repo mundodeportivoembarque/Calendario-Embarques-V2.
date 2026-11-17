@@ -3811,7 +3811,11 @@ function showResumenLog(log){
   el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
 function rowCantidadTotal(row){
-  return CHANNEL_COLUMNS.reduce((sum, c) => sum + (Number(row.channels && row.channels[c]) || 0), 0);
+  const excludeCols = ["DEPCO", "TRANS", "DEPSI"];
+  return CHANNEL_COLUMNS.reduce((sum, c) => {
+    if(excludeCols.includes(c)) return sum;
+    return sum + (Number(row.channels && row.channels[c]) || 0);
+  }, 0);
 }
 function resumenBlockOf(r){
   if(r.block === "INTERCOMPANIES" || r.block === "INTERCOMPANY") return "INTERCOMPANIES";
@@ -3904,7 +3908,23 @@ function renderResumenThead(visibleFamilies){
       ${colHeaders}
     </tr>`;
 }
+function applyConsolidadosDepcoDeduction(){
+  Object.keys(resumenState.months || {}).forEach(mes => {
+    (resumenState.months[mes] || []).forEach(r => {
+      if(resumenBlockOf(r) === "INGRESOS EMBARQUE"){
+        const shInfo = findShipmentInfo(r.embarque);
+        const isConsol = (shInfo && shInfo.tipo === "CONSOLIDADO_OTN") || normTxt(r.embarque).includes("CONSOLIDADO");
+        if(isConsol){
+          const tot = rowCantidadTotal(r);
+          r.channels["DEPCO"] = -tot;
+        }
+      }
+    });
+  });
+}
+
 function renderResumen(){
+  applyConsolidadosDepcoDeduction();
   const rawList = getResumenRowsForMonth(resumenState.mes);
   const emptyEl = document.getElementById("emptyResumen");
   const tbodyEl = document.getElementById("resumenTbody");
