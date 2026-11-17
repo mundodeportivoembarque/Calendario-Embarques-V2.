@@ -748,7 +748,7 @@
     <div class="resumen-toolbar" style="margin-top:12px;">
       <div class="dropzone" id="resumenDropzone">
         📤 Arrastra aquí tu archivo Excel (.xlsx), o <b>haz clic para seleccionarlo</b><br>
-        <span style="font-size:11px;">Soporta: Packing List LPN Proveedor (deduplicación de cartones), OC Consolidada, OC LPN Consolidado, Intercompany y Base Quick.</span>
+        <span style="font-size:11px;">Soporta: Packing List LPN Proveedor (deduplicación de cartones), OC Consolidada, OC LPN Consolidado, Intercompany y Stock on Hand.</span>
         <input type="file" id="resumenFileInput" accept=".xlsx,.xls" multiple style="display:none;">
       </div>
     </div>
@@ -3670,7 +3670,7 @@ const MESES_CALENDARIO = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULI
 function quickTitleForMonth(mes){
   const idx = MESES_CALENDARIO.indexOf(normTxt(mes));
   const prev = idx === -1 ? normTxt(mes) : MESES_CALENDARIO[(idx + 11) % 12];
-  return `BASE QUICK ACTUALIZADA CON CIERRE A ${prev}`;
+  return `STOCK ON HAND ACTUALIZADO CON CIERRE A ${prev}`;
 }
 function tryParseBaseQuick(aoa, mes, log, ctx){
   const header = findHeaderRow(aoa, [
@@ -3724,7 +3724,7 @@ function tryParseBaseQuick(aoa, mes, log, ctx){
     const target = ensureRow(mes, QUICK_BLOCK, ctx.quickTitle, marca, grupo, {});
     target.channels[canal] = (target.channels[canal] || 0) + acc[k];
   });
-  let msg = `Base Quick: ${count} registros procesados → "${ctx.quickTitle}".`;
+  let msg = `Stock on Hand: ${count} registros procesados → "${ctx.quickTitle}".`;
   const noRec = Object.keys(ignoradosAlm);
   if(noRec.length) msg += ` ${ignoradas} fila(s) ignoradas por almacén no reconocido (${noRec.slice(0,5).join(", ")}).`;
   else if(ignoradas) msg += ` ${ignoradas} fila(s) ignoradas por marca/grupo no válido.`;
@@ -3962,7 +3962,7 @@ function renderResumen(){
             sumChannels[c] += Number(r.channels && r.channels[c]) || 0;
           });
         });
-        const displayTitle = blockName === QUICK_BLOCK ? "BASE QUICK" : emb.embarque;
+        const displayTitle = blockName === QUICK_BLOCK ? "STOCK ON HAND" : emb.embarque;
         const marcaPillCls = mObj.marca === "REEBOK" ? "badge-marca-REEBOK" : "badge-marca-ADIDAS";
         const grpLabel = singleGrupoMode
           ? activeGrupos[0]
@@ -4069,7 +4069,8 @@ function populateResumenGroupSelect(list){
     const gk = r.block + "||" + r.embarque + "||" + r.marca;
     if(seen.has(gk)) return;
     seen.add(gk);
-    opts += `<option value="${escapeHtml(gk)}">${escapeHtml(r.embarque)} · ${escapeHtml(r.marca)}</option>`;
+    const optEmbName = r.block === QUICK_BLOCK ? "STOCK ON HAND" : r.embarque;
+    opts += `<option value="${escapeHtml(gk)}">${escapeHtml(optEmbName)} · ${escapeHtml(r.marca)}</option>`;
   });
   sel.innerHTML = opts;
 }
