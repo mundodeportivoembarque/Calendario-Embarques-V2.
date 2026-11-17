@@ -773,26 +773,34 @@ body.hide-global-tools #btnImport {
     <div class="card-head">
       <div>
         <h2>📑 Hoja de Resúmenes Sintetizada</h2>
-        <span class="muted" style="font-size:12px;">Los embarques registrados se agrupan automáticamente según el <b>mes aproximado de arribo al CD</b>.</span>
+        <span class="muted" style="font-size:12px;">Los embarques registrados se agrupan automáticamente según el <b>año y mes aproximado de arribo al CD</b>.</span>
       </div>
-      <div class="resumen-actions">
-        <button class="btn" id="btnExportResumen" style="background:var(--ok);color:#fff;">⬇ Exportar mes a Excel</button>
-        <button class="btn ghost" id="btnClearResumenMonth" style="background:#eee;color:var(--danger);">🧹 Limpiar mes</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="field" style="min-width:130px;">
+          <label>Año (Arribo CD)</label>
+          <select id="resumenYearSelect"></select>
+        </div>
+        <div class="field" style="min-width:165px;">
+          <label>Mes (Arribo CD)</label>
+          <select id="resumenMonthSelect">
+            <option value="TODOS">TODOS LOS MESES</option>
+            <option value="ENERO">ENERO</option>
+            <option value="FEBRERO">FEBRERO</option>
+            <option value="MARZO">MARZO</option>
+            <option value="ABRIL">ABRIL</option>
+            <option value="MAYO">MAYO</option>
+            <option value="JUNIO">JUNIO</option>
+            <option value="JULIO">JULIO</option>
+            <option value="AGOSTO">AGOSTO</option>
+            <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+            <option value="OCTUBRE">OCTUBRE</option>
+            <option value="NOVIEMBRE">NOVIEMBRE</option>
+            <option value="DICIEMBRE">DICIEMBRE</option>
+          </select>
+        </div>
+        <button class="btn" id="btnExportResumen" style="background:var(--ok);color:#fff;margin-top:14px;">⬇ Exportar a Excel</button>
+        <button class="btn ghost" id="btnClearResumenMonth" style="background:#eee;color:var(--danger);margin-top:14px;">🧹 Limpiar selección</button>
       </div>
-    </div>
-    <div class="month-tabs" id="resumenMonthTabs">
-      <button class="month-btn" data-mes="ENERO">ENERO</button>
-      <button class="month-btn" data-mes="FEBRERO">FEBRERO</button>
-      <button class="month-btn" data-mes="MARZO">MARZO</button>
-      <button class="month-btn" data-mes="ABRIL">ABRIL</button>
-      <button class="month-btn" data-mes="MAYO">MAYO</button>
-      <button class="month-btn" data-mes="JUNIO">JUNIO</button>
-      <button class="month-btn active" data-mes="JULIO">JULIO</button>
-      <button class="month-btn" data-mes="AGOSTO">AGOSTO</button>
-      <button class="month-btn" data-mes="SEPTIEMBRE">SEPTIEMBRE</button>
-      <button class="month-btn" data-mes="OCTUBRE">OCTUBRE</button>
-      <button class="month-btn" data-mes="NOVIEMBRE">NOVIEMBRE</button>
-      <button class="month-btn" data-mes="DICIEMBRE">DICIEMBRE</button>
     </div>
     <div class="resumen-toolbar" style="margin-top:12px;">
       <div class="dropzone" id="resumenDropzone">
@@ -875,6 +883,18 @@ body.hide-global-tools #btnImport {
             <option value="10">OCTUBRE</option>
             <option value="11">NOVIEMBRE</option>
             <option value="12">DICIEMBRE</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:155px;">
+          <label>Empresa</label>
+          <select id="arribosEmpresaSelect">
+            <option value="TODAS">TODAS LAS EMPRESAS</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:155px;">
+          <label>Marca</label>
+          <select id="arribosMarcaSelect">
+            <option value="TODAS">TODAS LAS MARCAS</option>
           </select>
         </div>
         <button class="btn" id="btnExportArribosCD" style="background:var(--ok);color:#fff;margin-top:14px;">⬇ Exportar Tabla CD (Excel)</button>
@@ -3429,7 +3449,7 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 const RESUMEN_MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_FAMILIES = [
   { name: "RETAIL",            cls: "fam-retail",  cols: ["MARATHON","TAF","BIG HEAD","OUTLET","EXPLORER","WEB","TELESHOP"] },
-  { name: "TIENDAS",           cls: "fam-tiendas", cols: ["TIENDAS","WEB ADIDAS"] },
+  { name: "TIENDAS",           cls: "fam-tiendas", cols: ["TIENDAS"] },
   { name: "MARKETING",         cls: "fam-mkt",     cols: ["SPOMA","MARKETING"] },
   { name: "MAYORISTA / OTROS", cls: "fam-mayor",   cols: ["MAYORISTA","KAO","EDCA"] },
   { name: "INGRESO BODEGAS",   cls: "fam-bodega",  cols: ["TRANS","DEPSI","DEPCO"] },
@@ -3448,7 +3468,6 @@ const CHANNEL_ALIAS_MAP = (function(){
     "TAF": ["TAF"],
     "BIG HEAD": ["BIG HEAD", "BIGHEAD", "BIG-HEAD"],
     "OUTLET": ["OUTLET", "OUTLETS"],
-    "WEB ADIDAS": ["WEB ADIDAS", "WEB ADI", "ECOMMERCE ADIDAS", "E-COMMERCE ADIDAS"],
     "WEB": ["WEB", "PAGINA WEB", "ECOMMERCE", "E-COMMERCE", "E COMMERCE", "INTERNET"],
     "TELESHOP": ["TELESHOP", "TELE SHOP"],
     "EXPLORER": ["EXPLORER"],
@@ -3473,9 +3492,6 @@ function resolveChannel(raw, allowedList){
   if(!key) return null;
   if(key.includes("DEPCO")) {
     if(!allowedList || allowedList.includes("DEPCO")) return "DEPCO";
-  }
-  if(key.includes("WEB") && (key.includes("ADIDAS") || key.includes("ADI"))) {
-    if(!allowedList || allowedList.includes("WEB ADIDAS")) return "WEB ADIDAS";
   }
   let canon = CHANNEL_ALIAS_MAP[key];
   if(!canon){
@@ -3509,6 +3525,7 @@ function blankChannels(){
   return o;
 }
 const resumenState = {
+  year: new Date().getFullYear(),
   mes: RESUMEN_MESES[new Date().getMonth()] || "JULIO",
   months: {},
   expandedGroups: new Set(),
@@ -3517,6 +3534,45 @@ const resumenState = {
   grupoFilter: "TODOS"
 };
 RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
+function populateResumenYearSelect(){
+  const sel = document.getElementById("resumenYearSelect");
+  if(!sel) return;
+  const yearsSet = new Set([new Date().getFullYear()]);
+  getShipmentsArray().forEach(sh => {
+    const cd = getEstimatedCDDate(sh);
+    if(cd && !isNaN(cd.getTime())) yearsSet.add(cd.getFullYear());
+  });
+  Object.keys(resumenState.months || {}).forEach(m => {
+    (resumenState.months[m] || []).forEach(r => {
+      if(r && r.fechaArriboCD){
+        const d = parseISO(r.fechaArriboCD);
+        if(d && !isNaN(d.getTime())) yearsSet.add(d.getFullYear());
+      }
+    });
+  });
+  const years = Array.from(yearsSet).sort((a,b)=>a-b);
+  sel.innerHTML = `<option value="0">TODOS LOS AÑOS</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(resumenState.year === 0 || years.includes(resumenState.year)){
+    sel.value = String(resumenState.year);
+  } else {
+    resumenState.year = new Date().getFullYear();
+    sel.value = String(resumenState.year);
+  }
+  const mSel = document.getElementById("resumenMonthSelect");
+  if(mSel) mSel.value = resumenState.mes;
+}
+function getResumenUploadTargetMonth(){
+  if(resumenState.mes && resumenState.mes !== "TODOS") return resumenState.mes;
+  return RESUMEN_MESES[new Date().getMonth()] || "JULIO";
+}
+function getResumenPeriodLabel(){
+  const yPart = resumenState.year ? String(resumenState.year) : "TODOS LOS AÑOS";
+  const mPart = (resumenState.mes && resumenState.mes !== "TODOS") ? resumenState.mes : "TODOS LOS MESES";
+  if(resumenState.mes && resumenState.mes !== "TODOS" && resumenState.year){
+    return `${resumenState.mes} ${resumenState.year}`;
+  }
+  return `${mPart} · ${yPart}`;
+}
 function resumenSave(){
   saveLocalBackup();
   if(cloudMode && resumenRef){
@@ -3542,7 +3598,22 @@ function getCdMonthNameForShipment(nombreEmbarque, fallbackMes){
   }
   return fallbackMes;
 }
-function getResumenRowsForMonth(targetMes, ignoreViewFilters){
+function getCdYearForShipment(nombreEmbarque, row){
+  const shInfo = findShipmentInfo(nombreEmbarque);
+  if(shInfo){
+    const cdDate = getEstimatedCDDate(shInfo);
+    if(cdDate && !isNaN(cdDate.getTime())){
+      return cdDate.getFullYear();
+    }
+  }
+  if(row && row.fechaArriboCD){
+    const d = parseISO(row.fechaArriboCD);
+    if(d && !isNaN(d.getTime())) return d.getFullYear();
+  }
+  return new Date().getFullYear();
+}
+function getResumenRowsForMonth(targetMes, ignoreViewFilters, targetYear){
+  const effectiveYear = (targetYear !== undefined) ? targetYear : resumenState.year;
   const result = [];
   Object.keys(resumenState.months || {}).forEach(bucketMes => {
     const rows = resumenState.months[bucketMes] || [];
@@ -3559,11 +3630,17 @@ function getResumenRowsForMonth(targetMes, ignoreViewFilters){
       const bType = resumenBlockOf(r);
       if(bType === "INGRESOS EMBARQUE"){
         const linkedMes = getCdMonthNameForShipment(r.embarque, bucketMes);
-        if(linkedMes === targetMes){
+        const linkedYear = getCdYearForShipment(r.embarque, r);
+        const mesOk = (!targetMes || targetMes === "TODOS" || linkedMes === targetMes);
+        const yearOk = (!effectiveYear || effectiveYear === 0 || linkedYear === effectiveYear);
+        if(mesOk && yearOk){
           result.push(r);
         }
       } else {
-        if(bucketMes === targetMes){
+        const rowYear = (r.fechaArriboCD && parseISO(r.fechaArriboCD)) ? parseISO(r.fechaArriboCD).getFullYear() : new Date().getFullYear();
+        const mesOk = (!targetMes || targetMes === "TODOS" || bucketMes === targetMes);
+        const yearOk = (!effectiveYear || effectiveYear === 0 || rowYear === effectiveYear);
+        if(mesOk && yearOk){
           result.push(r);
         }
       }
@@ -3944,14 +4021,15 @@ function handleResumenFiles(fileList){
   const files = Array.from(fileList);
   let pending = files.length;
   if(pending === 0) return;
-  const ctx = { quickCleared: false, quickTitle: quickTitleForMonth(resumenState.mes) };
+  const uploadMes = getResumenUploadTargetMonth();
+  const ctx = { quickCleared: false, quickTitle: quickTitleForMonth(uploadMes) };
   files.forEach(file => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array", cellDates: false });
-        processWorkbook(workbook, resumenState.mes, file.name, log, ctx);
+        processWorkbook(workbook, uploadMes, file.name, log, ctx);
       } catch(err) {
         log.push({ type: "err", msg: `"${file.name}": error al leer (${err.message}).` });
       }
@@ -4031,7 +4109,7 @@ function renderResumenKPIs(rawList){
   const pctTop = totAll ? ((topCanalVal / totAll) * 100).toFixed(1) + "%" : "0%";
   el.innerHTML = `
     <div class="kpi-card total">
-      <span class="kpi-lbl">Total Unidades (Arribo CD · ${resumenState.mes})</span>
+      <span class="kpi-lbl">Total Unidades (Arribo CD · ${escapeHtml(getResumenPeriodLabel())})</span>
       <span class="kpi-val">${totAll.toLocaleString()}</span>
       <span class="kpi-sub">Consolidado de ${Math.ceil(rawList.length / 3)} bloques</span>
     </div>
@@ -4060,7 +4138,7 @@ function renderResumenThead(visibleFamilies){
     .map(c => `<th style="min-width:74px;">${escapeHtml(c.replace("OUT_", ""))}</th>`).join("");
   thead.innerHTML = `
     <tr>
-      <th colspan="4" class="fam-info stk-emb">DATOS DEL EMBARQUE · ARRIBO CD: ${escapeHtml(resumenState.mes)}</th>
+      <th colspan="4" class="fam-info stk-emb">DATOS DEL EMBARQUE · ARRIBO CD: ${escapeHtml(getResumenPeriodLabel())}</th>
       ${famHeaders}
     </tr>
     <tr>
@@ -4105,12 +4183,12 @@ function applyConsolidadosSalidaDepco(){
   if(huboCambios) saveLocalBackup();
 }
 function renderResumen(){
+  populateResumenYearSelect();
   applyConsolidadosSalidaDepco();
   const rawList = getResumenRowsForMonth(resumenState.mes);
   const emptyEl = document.getElementById("emptyResumen");
   const tbodyEl = document.getElementById("resumenTbody");
   if(!tbodyEl) return;
-  document.querySelectorAll("#resumenMonthTabs .month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
   renderResumenKPIs(rawList);
   if(rawList.length === 0){
     renderResumenThead(CHANNEL_FAMILIES);
@@ -4149,8 +4227,8 @@ function renderResumen(){
     const embList = structure[blockName];
     if(embList.length === 0) return;
     const sectionLabel = blockName === "INGRESOS EMBARQUE"
-      ? `📦 INGRESOS DE EMBARQUE (ARRIBO CD: ${resumenState.mes})`
-      : (blockName === "INTERCOMPANIES" ? "🔄 INTERCOMPANIES" : `📊 ${quickTitleForMonth(resumenState.mes)}`);
+      ? `📦 INGRESOS DE EMBARQUE (ARRIBO CD: ${getResumenPeriodLabel()})`
+      : (blockName === "INTERCOMPANIES" ? "🔄 INTERCOMPANIES" : `📊 ${quickTitleForMonth(getResumenUploadTargetMonth())}`);
     html += `<tr class="section-banner-row"><td colspan="${totalTableCols}">${escapeHtml(sectionLabel)}</td></tr>`;
     embList.forEach((emb) => {
       const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
@@ -4179,7 +4257,7 @@ function renderResumen(){
         const sumChannels = blankChannels();
         let sumTotal = 0;
         activeGrupos.forEach(gName => {
-          const r = mObj.rows[gName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, gName, {});
+          const r = mObj.rows[gName] || ensureRow(getResumenUploadTargetMonth(), blockName, emb.embarque, mObj.marca, gName, {});
           sumTotal += rowCantidadTotal(r);
           CHANNEL_COLUMNS.forEach(c => {
             sumChannels[c] += Number(r.channels && r.channels[c]) || 0;
@@ -4210,7 +4288,7 @@ function renderResumen(){
         html += `</tr>`;
         if(!singleGrupoMode && isExpanded){
           activeGrupos.forEach(grupoName => {
-            const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
+            const row = mObj.rows[grupoName] || ensureRow(getResumenUploadTargetMonth(), blockName, emb.embarque, mObj.marca, grupoName, {});
             const totalRowQty = rowCantidadTotal(row);
             html += `<tr class="emb-data-row emb-sub-row ${bandClass}">`;
             html += `<td class="stk-emb"></td>`;
@@ -4331,10 +4409,12 @@ document.getElementById("resumenGrupoFilter").addEventListener("change", (e) => 
   resumenState.grupoFilter = e.target.value;
   renderResumen();
 });
-document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
-  const btn = e.target.closest(".month-btn");
-  if(!btn) return;
-  resumenState.mes = btn.dataset.mes;
+document.getElementById("resumenYearSelect").addEventListener("change", (e) => {
+  resumenState.year = Number(e.target.value) || 0;
+  renderResumen();
+});
+document.getElementById("resumenMonthSelect").addEventListener("change", (e) => {
+  resumenState.mes = e.target.value;
   renderResumen();
 });
 const resumenDropzone = document.getElementById("resumenDropzone");
@@ -4363,27 +4443,31 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", () =>
   showToast("🗑️ Quitado del resumen");
 });
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
-  if(!confirm(`¿Limpiar todos los datos vinculados a ${resumenState.mes}?`)) return;
+  const periodLbl = getResumenPeriodLabel();
+  if(!confirm(`¿Limpiar todos los datos vinculados a ${periodLbl}?`)) return;
   const visibleIds = new Set(getResumenRowsForMonth(resumenState.mes, true).map(r => r.id));
   Object.keys(resumenState.months || {}).forEach(m => {
     resumenState.months[m] = (resumenState.months[m] || []).filter(r => !visibleIds.has(r.id));
   });
-  resumenState.months[resumenState.mes] = [];
+  if(resumenState.mes && resumenState.mes !== "TODOS" && (!resumenState.year || resumenState.year === 0)){
+    resumenState.months[resumenState.mes] = [];
+  }
   resumenSave();
   renderResumen();
   renderArribosCD();
-  showToast("🧹 Mes limpiado");
+  showToast("🧹 Selección limpiada");
 });
 document.getElementById("btnExportResumen").addEventListener("click", () => {
   const rawList = getResumenRowsForMonth(resumenState.mes, true);
-  const header = ["BLOQUE", "MES ARRIBO CD", "EMBARQUE", "RÉGIMEN", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
+  const header = ["BLOQUE", "PERIODO ARRIBO CD", "EMBARQUE", "RÉGIMEN", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
   const aoa = [header];
   rawList.forEach(r => {
     const shInfo = (resumenBlockOf(r) === "INGRESOS EMBARQUE") ? findShipmentInfo(r.embarque) : null;
     const cdDate = shInfo ? getEstimatedCDDate(shInfo) : null;
+    const mesItem = cdDate ? RESUMEN_MESES[cdDate.getMonth()] : (r.mes || getResumenUploadTargetMonth());
     aoa.push([
       resumenBlockOf(r),
-      resumenState.mes,
+      mesItem,
       r.embarque,
       shInfo ? tipoLabel(shInfo.tipo) : "-",
       shInfo && shInfo.fechaArriboDepco ? fmtDMY(parseISO(shInfo.fechaArriboDepco)) : "-",
@@ -4397,8 +4481,10 @@ document.getElementById("btnExportResumen").addEventListener("click", () => {
   });
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `RESUMEN_${resumenState.mes}`);
-  XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
+  const sheetSuffix = (resumenState.mes && resumenState.mes !== "TODOS") ? resumenState.mes : "TODOS";
+  const yearSuffix = resumenState.year ? String(resumenState.year) : "TODOS";
+  XLSX.utils.book_append_sheet(wb, ws, `RESUMEN_${sheetSuffix}`.slice(0, 31));
+  XLSX.writeFile(wb, `Resumen_Embarques_${sheetSuffix}_${yearSuffix}.xlsx`);
   showToast("⬇ Archivo Excel exportado");
 });
 /* =========================================================
@@ -4456,36 +4542,85 @@ function getResumenStatsForShipment(nombreEmbarque){
   if(lpnSets.Accesorios.size > 0) stats.accC = lpnSets.Accesorios.size;
   return stats;
 }
-function populateArribosYearSelect(){
-  const sel = document.getElementById("arribosYearSelect");
-  if(!sel) return;
-  const yearsSet = new Set([new Date().getFullYear()]);
-  getShipmentsArray().forEach(sh => {
-    const cd = getEstimatedCDDate(sh);
-    if(cd) yearsSet.add(cd.getFullYear());
-  });
-  const years = Array.from(yearsSet).sort((a,b)=>a-b);
-  const prev = sel.value;
-  sel.innerHTML = `<option value="0">TODOS LOS AÑOS</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join("");
-  if(prev && Array.from(sel.options).some(o=>o.value===prev)) sel.value = prev;
-  else sel.value = String(new Date().getFullYear());
+function getShipmentEmpresa(sh){
+  const emp = sh && sh.empresa ? String(sh.empresa).trim().toUpperCase() : "";
+  return emp || "MEDEPORT";
+}
+function populateArribosFilters(){
+  const selYear = document.getElementById("arribosYearSelect");
+  const selEmp = document.getElementById("arribosEmpresaSelect");
+  const selMrc = document.getElementById("arribosMarcaSelect");
+  const shipments = getShipmentsArray();
+  if(selYear){
+    const yearsSet = new Set([new Date().getFullYear()]);
+    shipments.forEach(sh => {
+      const cd = getEstimatedCDDate(sh);
+      if(cd) yearsSet.add(cd.getFullYear());
+    });
+    const years = Array.from(yearsSet).sort((a,b)=>a-b);
+    const prev = selYear.value;
+    selYear.innerHTML = `<option value="0">TODOS LOS AÑOS</option>` + years.map(y=>`<option value="${y}">${y}</option>`).join("");
+    if(prev && Array.from(selYear.options).some(o=>o.value===prev)) selYear.value = prev;
+    else selYear.value = String(new Date().getFullYear());
+  }
+  if(selEmp){
+    const empSet = new Set(["MEDEPORT"]);
+    shipments.forEach(sh => empSet.add(getShipmentEmpresa(sh)));
+    const empresas = Array.from(empSet).sort();
+    const prevEmp = selEmp.value || "TODAS";
+    selEmp.innerHTML = `<option value="TODAS">TODAS LAS EMPRESAS</option>` +
+      empresas.map(emp => `<option value="${escapeHtml(emp)}">${escapeHtml(emp)}</option>`).join("");
+    selEmp.value = Array.from(selEmp.options).some(o=>o.value===prevEmp) ? prevEmp : "TODAS";
+  }
+  if(selMrc){
+    const mrcSet = new Set(["ADIDAS", "REEBOK"]);
+    shipments.forEach(sh => {
+      if(sh.marca){
+        if(sh.marca === "ADI_RBK"){
+          mrcSet.add("ADIDAS");
+          mrcSet.add("REEBOK");
+          mrcSet.add("ADI_RBK");
+        } else {
+          mrcSet.add(normTxt(sh.marca));
+        }
+      }
+    });
+    const marcas = Array.from(mrcSet);
+    const prevMrc = selMrc.value || "TODAS";
+    selMrc.innerHTML = `<option value="TODAS">TODAS LAS MARCAS</option>` +
+      marcas.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(marcaArriboLabel(m))}</option>`).join("");
+    selMrc.value = Array.from(selMrc.options).some(o=>o.value===prevMrc) ? prevMrc : "TODAS";
+  }
 }
 function getFilteredArribosCD(){
   const selYear = document.getElementById("arribosYearSelect");
   const selMonth = document.getElementById("arribosMonthSelect");
+  const selEmp = document.getElementById("arribosEmpresaSelect");
+  const selMrc = document.getElementById("arribosMarcaSelect");
   const filterYear = selYear ? Number(selYear.value) : 0;
   const filterMonth = selMonth ? Number(selMonth.value) : 0;
+  const filterEmp = selEmp ? selEmp.value : "TODAS";
+  const filterMrc = selMrc ? selMrc.value : "TODAS";
   return getShipmentsArray().map(sh => {
     const cdDate = getEstimatedCDDate(sh);
     return { sh, cdDate, cdTime: cdDate ? cdDate.getTime() : Number.MAX_SAFE_INTEGER };
   }).filter(item => {
     if(filterYear && (!item.cdDate || item.cdDate.getFullYear() !== filterYear)) return false;
     if(filterMonth && (!item.cdDate || (item.cdDate.getMonth() + 1) !== filterMonth)) return false;
+    if(filterEmp && filterEmp !== "TODAS" && getShipmentEmpresa(item.sh) !== filterEmp) return false;
+    if(filterMrc && filterMrc !== "TODAS"){
+      const shMrc = normTxt(item.sh.marca);
+      if(filterMrc === "ADIDAS" || filterMrc === "REEBOK"){
+        if(shMrc !== filterMrc && shMrc !== "ADI_RBK") return false;
+      } else if(shMrc !== filterMrc){
+        return false;
+      }
+    }
     return true;
   }).sort((a,b) => a.cdTime - b.cdTime);
 }
 function renderArribosCD(){
-  populateArribosYearSelect();
+  populateArribosFilters();
   const tbody = document.getElementById("arribosCdTbody");
   const tfoot = document.getElementById("arribosCdTfoot");
   const emptyEl = document.getElementById("emptyArribosCD");
@@ -4508,6 +4643,7 @@ function renderArribosCD(){
     const kgVal = manual.kgBruto !== undefined && manual.kgBruto !== null ? manual.kgBruto : "";
     const cbmVal = manual.cubicaje !== undefined && manual.cubicaje !== null ? manual.cubicaje : "";
     const contVal = manual.contenedores !== undefined && manual.contenedores !== null ? manual.contenedores : "";
+    const empresaTxt = getShipmentEmpresa(sh);
     sumZapU += stats.zapU; sumZapC += stats.zapC;
     sumRopU += stats.ropU; sumRopC += stats.ropC;
     sumAccU += stats.accU; sumAccC += stats.accC;
@@ -4518,7 +4654,7 @@ function renderArribosCD(){
       <tr>
         <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
         <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : (sh.tipo === "DEPCO" ? ("DEPCO - " + (sh.deposito || "ALMAGRO")) : sh.tipo))}</span></td>
-        <td><b>MEDEPORT</b></td>
+        <td><b>${escapeHtml(empresaTxt)}</b></td>
         <td><span class="pill badge-marca-${sh.marca}">${escapeHtml(marcaArriboLabel(sh.marca))}</span></td>
         <td class="emb-name-cell">${escapeHtml(sh.nombre)}</td>
         <td>${stats.zapU ? stats.zapU.toLocaleString() : 0}</td>
@@ -4555,6 +4691,8 @@ function renderArribosCD(){
 }
 document.getElementById("arribosYearSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosMonthSelect").addEventListener("change", renderArribosCD);
+document.getElementById("arribosEmpresaSelect").addEventListener("change", renderArribosCD);
+document.getElementById("arribosMarcaSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosCdTbody").addEventListener("change", (e)=>{
   const inp = e.target.closest("input.arribos-input");
   if(!inp) return;
@@ -4585,7 +4723,7 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
     aoa.push([
       cdDate ? fmtDMY(cdDate) : "",
       sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : (sh.tipo === "DEPCO" ? ("DEPCO - " + (sh.deposito || "ALMAGRO")) : sh.tipo),
-      "MEDEPORT",
+      getShipmentEmpresa(sh),
       marcaArriboLabel(sh.marca),
       sh.nombre,
       stats.zapU || 0,
