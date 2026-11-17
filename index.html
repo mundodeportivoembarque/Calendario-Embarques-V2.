@@ -532,7 +532,7 @@
         <input type="text" id="f_consolidado" placeholder="CONSOLIDADO 1 / N/A">
       </div>
       <div class="field" id="f_depositoField" style="display:none;">
-        <label>Depósito / Almacén</label>
+        <label id="f_depositoLabel">Depósito / Almacén</label>
         <select id="f_deposito">
           <option value="ALMAGRO">ALMAGRO</option>
           <option value="ALMESA">ALMESA</option>
@@ -2462,7 +2462,7 @@ function readForm(){
     nombre: document.getElementById("f_nombre").value.trim(),
     tipo: tipo,
     consolidado: document.getElementById("f_consolidado").value.trim(),
-    deposito: (tipo === "CONSOLIDADO_OTN") ? document.getElementById("f_deposito").value : "",
+    deposito: (tipo === "CONSOLIDADO_OTN" || tipo === "DEPCO") ? document.getElementById("f_deposito").value : "",
     fechaInstruccion: document.getElementById("f_finstruccion").value,
     fechaArriboDepco: document.getElementById("f_farribodepco").value,
     fechaArriboCD: document.getElementById("f_farribocd").value,
@@ -2755,9 +2755,17 @@ document.getElementById("btnCdChangeConfirm").addEventListener("click", ()=>{
 function updateDepositoVisibility(){
   const tipoVal = document.getElementById("f_tipo").value;
   const depField = document.getElementById("f_depositoField");
+  const depLabel = document.getElementById("f_depositoLabel");
   if(depField){
-    // Mostrar si es CONSOLIDADO_OTN (o si el usuario quiere que aplique a consolidados)
-    depField.style.display = (tipoVal === "CONSOLIDADO_OTN") ? "flex" : "none";
+    if(tipoVal === "CONSOLIDADO_OTN"){
+      depField.style.display = "flex";
+      if(depLabel) depLabel.textContent = "Depósito Origen";
+    } else if(tipoVal === "DEPCO"){
+      depField.style.display = "flex";
+      if(depLabel) depLabel.textContent = "Depósito Destino";
+    } else {
+      depField.style.display = "none";
+    }
   }
 }
 document.getElementById("f_tipo").addEventListener("change", updateDepositoVisibility);
@@ -3279,7 +3287,8 @@ const CHANNEL_FAMILIES = [
   { name: "TIENDAS",           cls: "fam-tiendas", cols: ["TIENDAS","WEB ADIDAS"] },
   { name: "MARKETING",         cls: "fam-mkt",     cols: ["SPOMA","MARKETING"] },
   { name: "MAYORISTA / OTROS", cls: "fam-mayor",   cols: ["MAYORISTA","KAO","EDCA"] },
-  { name: "BODEGAS / TRÁNSITO",cls: "fam-bodega",  cols: ["TRANS","DEPSI","DEPCO"] }
+  { name: "INGRESO BODEGAS",   cls: "fam-bodega",  cols: ["TRANS","DEPSI","DEPCO"] },
+  { name: "SALIDA BODEGAS",    cls: "fam-mayor",   cols: ["SALIDA DEPCO", "SALIDA INTERCOMPANY"] }
 ];
 const CHANNEL_COLUMNS = CHANNEL_FAMILIES.reduce((acc, f) => acc.concat(f.cols), []);
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
@@ -3665,8 +3674,8 @@ function tryParseFormatC(aoa, mes, log){
     }
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
-    if(bodega){
-      targetRow.channels[bodega] = (targetRow.channels[bodega] || 0) - cantidad;
+    if(bodega || intercompany){
+      targetRow.channels["SALIDA INTERCOMPANY"] = (targetRow.channels["SALIDA INTERCOMPANY"] || 0) + cantidad;
     }
     if(concepto){
       targetRow.channels[concepto] = (targetRow.channels[concepto] || 0) + cantidad;
@@ -3811,7 +3820,7 @@ function showResumenLog(log){
   el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
 function rowCantidadTotal(row){
-  const excludeCols = ["DEPCO", "TRANS", "DEPSI"];
+  const excludeCols = ["DEPCO", "TRANS", "DEPSI", "SALIDA DEPCO", "SALIDA INTERCOMPANY"];
   return CHANNEL_COLUMNS.reduce((sum, c) => {
     if(excludeCols.includes(c)) return sum;
     return sum + (Number(row.channels && row.channels[c]) || 0);
@@ -3908,7 +3917,7 @@ function renderResumenThead(visibleFamilies){
       ${colHeaders}
     </tr>`;
 }
-function applyConsolidadosDepcoDeduction(){
+function applyConsolidadosSalidaDepco(){
   Object.keys(resumenState.months || {}).forEach(mes => {
     (resumenState.months[mes] || []).forEach(r => {
       if(resumenBlockOf(r) === "INGRESOS EMBARQUE"){
@@ -3916,7 +3925,7 @@ function applyConsolidadosDepcoDeduction(){
         const isConsol = (shInfo && shInfo.tipo === "CONSOLIDADO_OTN") || normTxt(r.embarque).includes("CONSOLIDADO");
         if(isConsol){
           const tot = rowCantidadTotal(r);
-          r.channels["DEPCO"] = -tot;
+          r.channels["SALIDA DEPCO"] = tot;
         }
       }
     });
@@ -3924,7 +3933,7 @@ function applyConsolidadosDepcoDeduction(){
 }
 
 function renderResumen(){
-  applyConsolidadosDepcoDeduction();
+  applyConsolidadosSalidaDepco();
   const rawList = getResumenRowsForMonth(resumenState.mes);
   const emptyEl = document.getElementById("emptyResumen");
   const tbodyEl = document.getElementById("resumenTbody");
@@ -4336,7 +4345,7 @@ function renderArribosCD(){
     return `
       <tr>
         <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
-        <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : sh.tipo)}</span></td>
+        <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : (sh.tipo === "DEPCO" ? ("DEPCO - " + (sh.deposito || "ALMAGRO")) : sh.tipo))}</span></td>
         <td><b>MEDEPORT</b></td>
         <td><span class="pill badge-marca-${sh.marca}">${escapeHtml(marcaArriboLabel(sh.marca))}</span></td>
         <td class="emb-name-cell">${escapeHtml(sh.nombre)}</td>
@@ -4403,7 +4412,7 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
     const manual = arribosManualState[sh.id] || {};
     aoa.push([
       cdDate ? fmtDMY(cdDate) : "",
-      sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : sh.tipo,
+      sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : (sh.tipo === "DEPCO" ? ("DEPCO - " + (sh.deposito || "ALMAGRO")) : sh.tipo),
       "MEDEPORT",
       marcaArriboLabel(sh.marca),
       sh.nombre,
