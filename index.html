@@ -531,6 +531,13 @@
         <label>Consolidado</label>
         <input type="text" id="f_consolidado" placeholder="CONSOLIDADO 1 / N/A">
       </div>
+      <div class="field" id="f_depositoField" style="display:none;">
+        <label>Depósito / Almacén</label>
+        <select id="f_deposito">
+          <option value="ALMAGRO">ALMAGRO</option>
+          <option value="ALMESA">ALMESA</option>
+        </select>
+      </div>
       <div class="field">
         <label>Fecha instrucción producto</label>
         <input type="date" id="f_finstruccion">
@@ -2449,11 +2456,13 @@ function renderInputsTable(){
   `}).join("");
 }
 function readForm(){
+  const tipo = document.getElementById("f_tipo").value;
   return {
     marca: document.getElementById("f_marca").value,
     nombre: document.getElementById("f_nombre").value.trim(),
-    tipo: document.getElementById("f_tipo").value,
+    tipo: tipo,
     consolidado: document.getElementById("f_consolidado").value.trim(),
+    deposito: (tipo === "CONSOLIDADO_OTN") ? document.getElementById("f_deposito").value : "",
     fechaInstruccion: document.getElementById("f_finstruccion").value,
     fechaArriboDepco: document.getElementById("f_farribodepco").value,
     fechaArriboCD: document.getElementById("f_farribocd").value,
@@ -2472,6 +2481,8 @@ function clearForm(){
   document.getElementById("btnCancelEdit").style.display = "none";
 }
 function fillFormForEdit(s){
+  document.getElementById("f_deposito").value = s.deposito || "ALMAGRO";
+  updateDepositoVisibility();
   document.getElementById("f_marca").value = s.marca;
   document.getElementById("f_nombre").value = s.nombre;
   document.getElementById("f_tipo").value = s.tipo;
@@ -2732,6 +2743,7 @@ document.getElementById("btnCdChangeConfirm").addEventListener("click", ()=>{
   closeCdChangeModal(false);
   saveShipment(ctx.id, sh);
   if(ctx.source === "form") clearForm();
+  updateDepositoVisibility();
 
   if(hasSlaRisk){
     showToast("⚠️ Fecha CD actualizada · Alerta de incumplimiento de margen CD generada", "error");
@@ -2739,6 +2751,16 @@ document.getElementById("btnCdChangeConfirm").addEventListener("click", ()=>{
     showToast("✅ Cambio de fecha CD y motivo registrados");
   }
 });
+
+function updateDepositoVisibility(){
+  const tipoVal = document.getElementById("f_tipo").value;
+  const depField = document.getElementById("f_depositoField");
+  if(depField){
+    // Mostrar si es CONSOLIDADO_OTN (o si el usuario quiere que aplique a consolidados)
+    depField.style.display = (tipoVal === "CONSOLIDADO_OTN") ? "flex" : "none";
+  }
+}
+document.getElementById("f_tipo").addEventListener("change", updateDepositoVisibility);
 
 document.getElementById("btnAddShipment").addEventListener("click", ()=>{
   const data = readForm();
@@ -4294,7 +4316,7 @@ function renderArribosCD(){
     return `
       <tr>
         <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
-        <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? "CONSOLIDADO" : sh.tipo)}</span></td>
+        <td><span class="pill badge-tipo-${sh.tipo}">${escapeHtml(sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : sh.tipo)}</span></td>
         <td><b>MEDEPORT</b></td>
         <td><span class="pill badge-marca-${sh.marca}">${escapeHtml(marcaArriboLabel(sh.marca))}</span></td>
         <td class="emb-name-cell">${escapeHtml(sh.nombre)}</td>
@@ -4361,7 +4383,7 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
     const manual = arribosManualState[sh.id] || {};
     aoa.push([
       cdDate ? fmtDMY(cdDate) : "",
-      sh.tipo === "CONSOLIDADO_OTN" ? "CONSOLIDADO" : sh.tipo,
+      sh.tipo === "CONSOLIDADO_OTN" ? ("CONSOLIDADO - " + (sh.deposito || "ALMAGRO")) : sh.tipo,
       "MEDEPORT",
       marcaArriboLabel(sh.marca),
       sh.nombre,
