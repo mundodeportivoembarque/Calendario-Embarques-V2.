@@ -405,7 +405,8 @@
   /* Colores por familia de canal */
   th.fam-info{background:#1B2A4A !important;color:#fff !important;}
   th.fam-retail{background:#2f5597 !important;color:#fff !important;}
-  th.fam-digital{background:#5B9BD5 !important;color:#fff !important;}
+  th.fam-tiendas{background:#2b7bba !important;color:#fff !important;}
+  th.fam-mkt{background:#7030A0 !important;color:#fff !important;}
   th.fam-mayor{background:#C55A11 !important;color:#fff !important;}
   th.fam-bodega{background:#548235 !important;color:#fff !important;}
   /* Solo 3 columnas fijas a la izquierda */
@@ -415,7 +416,7 @@
   table.resumen-table thead th.stk-emb,
   table.resumen-table thead th.stk-mrc,
   table.resumen-table thead th.stk-grp{z-index:20;}
-  /* Franja separadora de sección (Ingresos / Intercompanies / STOCK ON HAND) */
+  /* Franja separadora de sección (Ingresos / Intercompanies / Base Quick) */
   tr.section-banner-row td{
     background:#e9eef7;color:var(--navy);font-weight:800;font-size:11.5px;letter-spacing:.5px;
     text-align:left;padding:8px 12px;border-top:2px solid #b9c3dd;border-bottom:2px solid #b9c3dd;
@@ -747,18 +748,35 @@
     <div class="resumen-toolbar" style="margin-top:12px;">
       <div class="dropzone" id="resumenDropzone">
         📤 Arrastra aquí tu archivo Excel (.xlsx), o <b>haz clic para seleccionarlo</b><br>
-        <span style="font-size:11px;">Soporta: Packing List LPN Proveedor (deduplicación de cartones), OC Consolidada, OC LPN Consolidado, Intercompany y STOCK ON HAND.</span>
+        <span style="font-size:11px;">Soporta: Packing List LPN Proveedor (deduplicación de cartones), OC Consolidada, OC LPN Consolidado, Intercompany y Base Quick.</span>
         <input type="file" id="resumenFileInput" accept=".xlsx,.xls" multiple style="display:none;">
       </div>
     </div>
     <div class="import-log" id="resumenImportLog" style="display:none;"></div>
     <!-- Tarjetas KPI superiores -->
     <div class="resumen-kpis" id="resumenKpis"></div>
-    <!-- Barra de controles: quitar embarque + filtros visuales -->
+    <!-- Barra de controles: filtros por Marca/Grupo + quitar embarque + filtros visuales -->
     <div class="resumen-controls-bar">
-      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-        <div class="field" style="min-width:260px;">
-          <label>Quitar un embarque / intercompany del mes</label>
+      <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+        <div class="field" style="min-width:140px;">
+          <label>Filtrar por Marca</label>
+          <select id="resumenBrandFilter">
+            <option value="TODAS">TODAS</option>
+            <option value="ADIDAS">🔴 ADIDAS</option>
+            <option value="REEBOK">🔵 REEBOK</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:155px;">
+          <label>Filtrar por Grupo</label>
+          <select id="resumenGrupoFilter">
+            <option value="TODOS">TODOS</option>
+            <option value="Calzado">👟 Calzado</option>
+            <option value="Ropa">👕 Ropa</option>
+            <option value="Accesorios">🎒 Accesorios</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:230px;">
+          <label>Quitar embarque / intercompany</label>
           <select id="resumenGroupSelect"><option value="">— Selecciona —</option></select>
         </div>
         <button class="btn small danger" id="btnRemoveResumenGroup">🗑️ Quitar del mes</button>
@@ -1648,7 +1666,7 @@ function construirHtmlCorreo(listaAlertas, hoy, tituloRol, subtituloAlcance) {
         </table>
         ${bloquesHtml}
         <p style="margin:18px 0 0 0;font-size:12.5px;color:#68708a;border-top:1px solid #e1e5ee;padding-top:12px;">
-        Por favor, su ayuda completando las actividades pendientes para evitar retrasos en el embarque.<br><br>
+          Por favor ingresar al sistema <b>Planificación de Embarques Medeport</b> para actualizar el estado de los microprocesos.<br><br>
           Saludos cordiales,<br>
           <strong>Planificación · Mundo Deportivo</strong>
         </p>
@@ -3235,10 +3253,11 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 ========================================================= */
 const RESUMEN_MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_FAMILIES = [
-  { name: "RETAIL / TIENDAS", cls: "fam-retail", cols: ["MARATHON","TAF","BIG HEAD","OUTLET","EXPLORER","SPOMA","TIENDAS"] },
-  { name: "DIGITAL",          cls: "fam-digital", cols: ["WEB","TELESHOP"] },
-  { name: "MAYORISTA / OTROS",cls: "fam-mayor",   cols: ["MAYORISTA","KAO","EDCA"] },
-  { name: "BODEGAS / TRÁNSITO",cls: "fam-bodega", cols: ["TRANS","DEPSI","DEPCO"] }
+  { name: "RETAIL",            cls: "fam-retail",  cols: ["MARATHON","TAF","BIG HEAD","OUTLET","EXPLORER","WEB","TELESHOP"] },
+  { name: "TIENDAS",           cls: "fam-tiendas", cols: ["TIENDAS","WEB ADIDAS"] },
+  { name: "MARKETING",         cls: "fam-mkt",     cols: ["SPOMA","MARKETING"] },
+  { name: "MAYORISTA / OTROS", cls: "fam-mayor",   cols: ["MAYORISTA","KAO","EDCA"] },
+  { name: "BODEGAS / TRÁNSITO",cls: "fam-bodega",  cols: ["TRANS","DEPSI","DEPCO"] }
 ];
 const CHANNEL_COLUMNS = CHANNEL_FAMILIES.reduce((acc, f) => acc.concat(f.cols), []);
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
@@ -3253,10 +3272,12 @@ const CHANNEL_ALIAS_MAP = (function(){
     "TAF": ["TAF"],
     "BIG HEAD": ["BIG HEAD", "BIGHEAD", "BIG-HEAD"],
     "OUTLET": ["OUTLET", "OUTLETS"],
+    "WEB ADIDAS": ["WEB ADIDAS", "WEB ADI", "ECOMMERCE ADIDAS", "E-COMMERCE ADIDAS"],
     "WEB": ["WEB", "PAGINA WEB", "ECOMMERCE", "E-COMMERCE", "E COMMERCE", "INTERNET"],
     "TELESHOP": ["TELESHOP", "TELE SHOP"],
     "EXPLORER": ["EXPLORER"],
     "SPOMA": ["SPOMA"],
+    "MARKETING": ["MARKETING", "MKT", "MERCADEO"],
     "TIENDAS": ["TIENDAS", "TIENDA"],
     "MAYORISTA": ["MAYORISTA", "MAYORISTAS"],
     "KAO": ["KAO"],
@@ -3276,6 +3297,9 @@ function resolveChannel(raw, allowedList){
   if(!key) return null;
   if(key.includes("DEPCO")) {
     if(!allowedList || allowedList.includes("DEPCO")) return "DEPCO";
+  }
+  if(key.includes("WEB") && (key.includes("ADIDAS") || key.includes("ADI"))) {
+    if(!allowedList || allowedList.includes("WEB ADIDAS")) return "WEB ADIDAS";
   }
   let canon = CHANNEL_ALIAS_MAP[key];
   if(!canon){
@@ -3312,7 +3336,9 @@ const resumenState = {
   mes: RESUMEN_MESES[new Date().getMonth()] || "JULIO",
   months: {},
   expandedGroups: new Set(),
-  hideZeroCols: false
+  hideZeroCols: false,
+  brandFilter: "TODAS",
+  grupoFilter: "TODOS"
 };
 RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
 function resumenSave(){
@@ -3340,12 +3366,20 @@ function getCdMonthNameForShipment(nombreEmbarque, fallbackMes){
   }
   return fallbackMes;
 }
-function getResumenRowsForMonth(targetMes){
+function getResumenRowsForMonth(targetMes, ignoreViewFilters){
   const result = [];
   Object.keys(resumenState.months || {}).forEach(bucketMes => {
     const rows = resumenState.months[bucketMes] || [];
     rows.forEach(r => {
       if(!r) return;
+      if(!ignoreViewFilters){
+        if(resumenState.brandFilter && resumenState.brandFilter !== "TODAS"){
+          if(resolveMarca(r.marca) !== resumenState.brandFilter) return;
+        }
+        if(resumenState.grupoFilter && resumenState.grupoFilter !== "TODOS"){
+          if(r.grupo !== resumenState.grupoFilter) return;
+        }
+      }
       const bType = resumenBlockOf(r);
       if(bType === "INGRESOS EMBARQUE"){
         const linkedMes = getCdMonthNameForShipment(r.embarque, bucketMes);
@@ -3630,13 +3664,13 @@ function tryParseFormatC(aoa, mes, log){
   log.push({ type: (count === 0 || sinConcepto || sinGrupo) ? "err" : "ok", msg });
   return true;
 }
-const QUICK_BLOCK = "STOCK ON HAND";
+const QUICK_BLOCK = "BASE QUICK";
 const QUICK_CHANNELS = ["TRANS","DEPSI","DEPCO"];
 const MESES_CALENDARIO = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 function quickTitleForMonth(mes){
   const idx = MESES_CALENDARIO.indexOf(normTxt(mes));
   const prev = idx === -1 ? normTxt(mes) : MESES_CALENDARIO[(idx + 11) % 12];
-  return `STOCK ON HAND ACTUALIZADA CON CIERRE A ${prev}`;
+  return `BASE QUICK ACTUALIZADA CON CIERRE A ${prev}`;
 }
 function tryParseBaseQuick(aoa, mes, log, ctx){
   const header = findHeaderRow(aoa, [
@@ -3690,7 +3724,7 @@ function tryParseBaseQuick(aoa, mes, log, ctx){
     const target = ensureRow(mes, QUICK_BLOCK, ctx.quickTitle, marca, grupo, {});
     target.channels[canal] = (target.channels[canal] || 0) + acc[k];
   });
-  let msg = `STOCK ON HAND: ${count} registros procesados → "${ctx.quickTitle}".`;
+  let msg = `Base Quick: ${count} registros procesados → "${ctx.quickTitle}".`;
   const noRec = Object.keys(ignoradosAlm);
   if(noRec.length) msg += ` ${ignoradas} fila(s) ignoradas por almacén no reconocido (${noRec.slice(0,5).join(", ")}).`;
   else if(ignoradas) msg += ` ${ignoradas} fila(s) ignoradas por marca/grupo no válido.`;
@@ -3915,37 +3949,44 @@ function renderResumen(){
         bandIndex++;
         const expKey = blockName + "||" + normTxt(emb.embarque) + "||" + normTxt(mObj.marca);
         const isExpanded = resumenState.expandedGroups.has(expKey);
+        const activeGrupos = (resumenState.grupoFilter && resumenState.grupoFilter !== "TODOS")
+          ? [resumenState.grupoFilter]
+          : GRUPOS;
+        const singleGrupoMode = activeGrupos.length === 1;
         const sumChannels = blankChannels();
         let sumTotal = 0;
-        GRUPOS.forEach(gName => {
+        activeGrupos.forEach(gName => {
           const r = mObj.rows[gName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, gName, {});
           sumTotal += rowCantidadTotal(r);
           CHANNEL_COLUMNS.forEach(c => {
             sumChannels[c] += Number(r.channels && r.channels[c]) || 0;
           });
         });
-        const displayTitle = blockName === QUICK_BLOCK ? "STOCK ON HAND" : emb.embarque;
+        const displayTitle = blockName === QUICK_BLOCK ? "BASE QUICK" : emb.embarque;
         const marcaPillCls = mObj.marca === "REEBOK" ? "badge-marca-REEBOK" : "badge-marca-ADIDAS";
+        const grpLabel = singleGrupoMode
+          ? activeGrupos[0]
+          : (isExpanded ? "Total Embarque" : "Consolidado (3)");
         html += `<tr class="emb-data-row ${bandClass}">`;
         html += `<td class="stk-emb">
           <div class="emb-title-box">
             <div class="emb-title-top">
               <span class="emb-name-txt">${escapeHtml(displayTitle)}</span>
-              <button class="btn-expand-grp" data-expkey="${escapeHtml(expKey)}">${isExpanded ? "➖ Ocultar" : "➕ Detalle"}</button>
+              ${singleGrupoMode ? "" : `<button class="btn-expand-grp" data-expkey="${escapeHtml(expKey)}">${isExpanded ? "➖ Ocultar" : "➕ Detalle"}</button>`}
             </div>
             ${metaTagsHtml ? `<div class="emb-meta-tags">${metaTagsHtml}</div>` : ""}
           </div>
         </td>`;
         html += `<td class="stk-mrc"><span class="pill ${marcaPillCls}">${escapeHtml(mObj.marca)}</span></td>`;
-        html += `<td class="stk-grp" style="font-weight:700;color:var(--navy);">${isExpanded ? "Total Embarque" : "Consolidado (3)"}</td>`;
+        html += `<td class="stk-grp" style="font-weight:700;color:var(--navy);">${escapeHtml(grpLabel)}</td>`;
         html += `<td class="total-cell">${sumTotal ? sumTotal.toLocaleString() : 0}</td>`;
         visibleCols.forEach(c => {
           const val = sumChannels[c] || 0;
           html += `<td class="channel-val" style="font-weight:700;">${val === 0 ? "" : Number(val).toLocaleString()}</td>`;
         });
         html += `</tr>`;
-        if(isExpanded){
-          GRUPOS.forEach(grupoName => {
+        if(!singleGrupoMode && isExpanded){
+          activeGrupos.forEach(grupoName => {
             const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
             const totalRowQty = rowCantidadTotal(row);
             html += `<tr class="emb-data-row emb-sub-row ${bandClass}">`;
@@ -3974,13 +4015,16 @@ function renderResumen(){
       grandTotals[c] += q;
     });
   });
+  const gruposSummaryList = (resumenState.grupoFilter && resumenState.grupoFilter !== "TODOS")
+    ? [resumenState.grupoFilter]
+    : GRUPOS;
   html += `<tr class="section-banner-row"><td colspan="${totalTableCols}">📈 RESUMEN TOTAL DEL MES POR GRUPO Y CANAL</td></tr>`;
-  GRUPOS.forEach((gName, idx) => {
+  gruposSummaryList.forEach((gName, idx) => {
     const gChannels = totalsByGrupo[gName];
     const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
     html += `<tr class="totals-group-row">`;
     if(idx === 0){
-      html += `<td colspan="2" rowspan="3" class="subtot-label stk-emb">Total por grupo</td>`;
+      html += `<td colspan="2" rowspan="${gruposSummaryList.length}" class="subtot-label stk-emb">Total por grupo</td>`;
     }
     html += `<td class="stk-grp">${escapeHtml(gName)}</td>`;
     html += `<td class="total-cell">${gTotal ? gTotal.toLocaleString() : 0}</td>`;
@@ -4055,6 +4099,14 @@ document.getElementById("chkHideZeroCols").addEventListener("change", (e) => {
   resumenState.hideZeroCols = e.target.checked;
   renderResumen();
 });
+document.getElementById("resumenBrandFilter").addEventListener("change", (e) => {
+  resumenState.brandFilter = e.target.value;
+  renderResumen();
+});
+document.getElementById("resumenGrupoFilter").addEventListener("change", (e) => {
+  resumenState.grupoFilter = e.target.value;
+  renderResumen();
+});
 document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".month-btn");
   if(!btn) return;
@@ -4088,7 +4140,7 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", () =>
 });
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
   if(!confirm(`¿Limpiar todos los datos vinculados a ${resumenState.mes}?`)) return;
-  const visibleIds = new Set(getResumenRowsForMonth(resumenState.mes).map(r => r.id));
+  const visibleIds = new Set(getResumenRowsForMonth(resumenState.mes, true).map(r => r.id));
   Object.keys(resumenState.months || {}).forEach(m => {
     resumenState.months[m] = (resumenState.months[m] || []).filter(r => !visibleIds.has(r.id));
   });
@@ -4099,7 +4151,7 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
   showToast("🧹 Mes limpiado");
 });
 document.getElementById("btnExportResumen").addEventListener("click", () => {
-  const rawList = getResumenRowsForMonth(resumenState.mes);
+  const rawList = getResumenRowsForMonth(resumenState.mes, true);
   const header = ["BLOQUE", "MES ARRIBO CD", "EMBARQUE", "RÉGIMEN", "ARRIBO DEPCO", "CONSOLIDADO", "ARRIBO CD", "MARCA", "GRUPO", "CANTIDAD TOTAL", ...CHANNEL_COLUMNS];
   const aoa = [header];
   rawList.forEach(r => {
