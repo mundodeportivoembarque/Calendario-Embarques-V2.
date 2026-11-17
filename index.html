@@ -3288,7 +3288,7 @@ const CHANNEL_FAMILIES = [
   { name: "MARKETING",         cls: "fam-mkt",     cols: ["SPOMA","MARKETING"] },
   { name: "MAYORISTA / OTROS", cls: "fam-mayor",   cols: ["MAYORISTA","KAO","EDCA"] },
   { name: "INGRESO BODEGAS",   cls: "fam-bodega",  cols: ["TRANS","DEPSI","DEPCO"] },
-  { name: "SALIDA BODEGAS",    cls: "fam-mayor",   cols: ["SALIDA DEPCO", "SALIDA INTERCOMPANY"] }
+  { name: "SALIDA BODEGAS",    cls: "fam-mayor",   cols: ["OUT_TRANS","OUT_DEPSI","OUT_DEPCO"] }
 ];
 const CHANNEL_COLUMNS = CHANNEL_FAMILIES.reduce((acc, f) => acc.concat(f.cols), []);
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
@@ -3674,8 +3674,11 @@ function tryParseFormatC(aoa, mes, log){
     }
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
-    if(bodega || intercompany){
-      targetRow.channels["SALIDA INTERCOMPANY"] = (targetRow.channels["SALIDA INTERCOMPANY"] || 0) + cantidad;
+    if(bodega){
+      const outKey = "OUT_" + bodega;
+      targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + cantidad;
+    } else if(intercompany){
+      targetRow.channels["OUT_TRANS"] = (targetRow.channels["OUT_TRANS"] || 0) + cantidad;
     }
     if(concepto){
       targetRow.channels[concepto] = (targetRow.channels[concepto] || 0) + cantidad;
@@ -3820,7 +3823,7 @@ function showResumenLog(log){
   el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
 function rowCantidadTotal(row){
-  const excludeCols = ["DEPCO", "TRANS", "DEPSI", "SALIDA DEPCO", "SALIDA INTERCOMPANY"];
+  const excludeCols = ["DEPCO", "TRANS", "DEPSI", "OUT_TRANS", "OUT_DEPSI", "OUT_DEPCO"];
   return CHANNEL_COLUMNS.reduce((sum, c) => {
     if(excludeCols.includes(c)) return sum;
     return sum + (Number(row.channels && row.channels[c]) || 0);
@@ -3903,7 +3906,7 @@ function renderResumenThead(visibleFamilies){
   if(!thead) return;
   const famHeaders = visibleFamilies.map(f => `<th colspan="${f.cols.length}" class="${f.cls}">${escapeHtml(f.name)}</th>`).join("");
   const colHeaders = visibleFamilies.reduce((acc, f) => acc.concat(f.cols), [])
-    .map(c => `<th style="min-width:74px;">${escapeHtml(c)}</th>`).join("");
+    .map(c => `<th style="min-width:74px;">${escapeHtml(c.replace("OUT_", ""))}</th>`).join("");
   thead.innerHTML = `
     <tr>
       <th colspan="4" class="fam-info stk-emb">DATOS DEL EMBARQUE · ARRIBO CD: ${escapeHtml(resumenState.mes)}</th>
@@ -3925,7 +3928,7 @@ function applyConsolidadosSalidaDepco(){
         const isConsol = (shInfo && shInfo.tipo === "CONSOLIDADO_OTN") || normTxt(r.embarque).includes("CONSOLIDADO");
         if(isConsol){
           const tot = rowCantidadTotal(r);
-          r.channels["SALIDA DEPCO"] = tot;
+          r.channels["OUT_DEPCO"] = tot;
         }
       }
     });
