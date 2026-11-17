@@ -469,6 +469,48 @@
   table.arribos-table input.arribos-input.wide{width:115px;}
   table.arribos-table input.arribos-input:focus{border-color:var(--accent-2);background:#f4f9ff;}
   table.arribos-table tfoot td{background:#e2efda;font-weight:800;border-top:2px solid #a9d18e;color:#1c2333;}
+
+/* ---------- CONTROL DE ACCESO POR ÁREA (?area=...) ---------- */
+body.readonly-mode .act-bar[draggable="true"] {
+  cursor: default !important;
+}
+body.readonly-mode button[data-action="reset-dates"],
+body.readonly-mode #resumenDropzone,
+body.readonly-mode #btnClearResumenMonth,
+body.readonly-mode #btnRemoveResumenGroup,
+body.readonly-mode #resumenGroupSelect {
+  display: none !important;
+}
+body.no-cd-edit select.arrival-status-select,
+body.no-cd-edit input.arribos-input {
+  pointer-events: none !important;
+  opacity: 0.85;
+  background: #f3f5f9 !important;
+}
+body.hide-global-tools #btnSyncCloud,
+body.hide-global-tools #btnImport {
+  display: none !important;
+}
+.role-badge-topbar {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #FFD966;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+.access-denied-box {
+  max-width: 520px;
+  margin: 80px auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
 </style>
 </head>
 <body>
@@ -919,6 +961,108 @@
 <script>
 (function(){
 "use strict";
+/* =========================================================
+   CONTROL DE ACCESO Y PERMISOS POR PARÁMETRO URL (?area=...)
+========================================================= */
+const AREA_PERMISSIONS = {
+  planificacion: {
+    label: "👑 Planificación (Admin)",
+    tabs: ["inputs", "adidas", "reebok", "consolidado", "microprocesos", "resumen", "arribos_cd", "alertas_config"],
+    canEditAll: true,
+    canEditCD: true
+  },
+  producto_adidas: {
+    label: "🔴 Producto Adidas",
+    tabs: ["adidas", "consolidado", "resumen", "arribos_cd"],
+    canEditAll: false,
+    canEditCD: false
+  },
+  producto_reebok: {
+    label: "🔵 Producto Reebok",
+    tabs: ["reebok", "consolidado", "resumen", "arribos_cd"],
+    canEditAll: false,
+    canEditCD: false
+  },
+  cd: {
+    label: "🚚 Logística / CD",
+    tabs: ["adidas", "reebok", "consolidado", "resumen", "arribos_cd"],
+    canEditAll: false,
+    canEditCD: true
+  },
+  comex: {
+    label: "🌐 COMEX",
+    tabs: ["inputs", "adidas", "reebok", "consolidado", "resumen", "arribos_cd"],
+    canEditAll: true,
+    canEditCD: true
+  }
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+const currentAreaKey = (urlParams.get("area") || "").toLowerCase().trim();
+const currentAreaCfg = AREA_PERMISSIONS[currentAreaKey] || null;
+
+function applyAreaAccessControl() {
+  if (!currentAreaCfg) {
+    document.querySelectorAll(".tabs, .view, #firebaseErrorBanner, footer.hint").forEach(el => {
+      el.style.display = "none";
+    });
+    const toolbar = document.querySelector(".toolbar-actions");
+    if (toolbar) toolbar.style.display = "none";
+
+    const denied = document.createElement("div");
+    denied.className = "access-denied-box";
+    denied.innerHTML = `
+      <div style="font-size:38px;margin-bottom:10px;">🔒</div>
+      <h2 style="color:var(--navy);margin-bottom:8px;">Enlace de Área Requerido</h2>
+      <p class="muted" style="font-size:13.5px;line-height:1.5;margin:0;">
+        Este portal está segmentado por departamento.<br>
+        Por favor ingresa utilizando el <b>enlace específico de tu área</b> proporcionado por <b>Planificación</b>.
+      </p>
+    `;
+    document.body.appendChild(denied);
+    return false;
+  }
+
+  const toolbar = document.querySelector(".toolbar-actions");
+  if (toolbar) {
+    const badge = document.createElement("div");
+    badge.className = "role-badge-topbar";
+    badge.textContent = currentAreaCfg.label;
+    toolbar.prepend(badge);
+  }
+
+  if (currentAreaKey !== "planificacion") {
+    document.body.classList.add("hide-global-tools");
+  }
+
+  if (!currentAreaCfg.canEditAll) {
+    document.body.classList.add("readonly-mode");
+  }
+  if (!currentAreaCfg.canEditCD) {
+    document.body.classList.add("no-cd-edit");
+  }
+
+  const allowedSet = new Set(currentAreaCfg.tabs);
+  document.querySelectorAll(".tabs .tab").forEach(tab => {
+    const v = tab.dataset.view;
+    if (!allowedSet.has(v)) {
+      tab.remove();
+      const viewEl = document.getElementById("view-" + v);
+      if (viewEl) viewEl.remove();
+    }
+  });
+
+  const firstTab = document.querySelector(".tabs .tab");
+  if (firstTab) {
+    document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    firstTab.classList.add("active");
+    const firstView = document.getElementById("view-" + firstTab.dataset.view);
+    if (firstView) firstView.classList.add("active");
+  }
+
+  return true;
+}
 const firebaseConfig = {
   apiKey: "AIzaSyBQvCoA6p83012z95pvb0012hkjmrj5Ssk",
   authDomain: "embarques-mdp-7c49b.firebaseapp.com",
@@ -2181,6 +2325,7 @@ function renderBrandView(marca, containerId){
 }
 let draggedBarPayload = null;
 function bindGanttDragAndDrop(){
+  if (currentAreaCfg && !currentAreaCfg.canEditAll) return;
   document.querySelectorAll(".act-bar[draggable=true]").forEach(bar=>{
     bar.addEventListener("dragstart", (e)=>{
       draggedBarPayload = {
@@ -3675,15 +3820,13 @@ function tryParseFormatC(aoa, mes, log){
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
     
-    // Si hay bodega explícita en 2 columnas, registrar salida positiva en OUT_<BODEGA>
     if(bodega){
       const outKey = "OUT_" + bodega;
       targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + Math.abs(cantidad);
     } else if(!dosColumnas && INTERCOMPANY_BODEGAS.includes(concepto) && cantidad < 0){
-      // Si viene en 1 sola columna con signo negativo (ej. TRANS: -6792), mover a SALIDA BODEGAS en positivo
       const outKey = "OUT_" + concepto;
       targetRow.channels[outKey] = (targetRow.channels[outKey] || 0) + Math.abs(cantidad);
-      concepto = null; // Evita sumarlo también en Ingreso Bodegas
+      concepto = null;
     } else if(intercompany && !INTERCOMPANY_BODEGAS.includes(concepto)){
       targetRow.channels["OUT_TRANS"] = (targetRow.channels["OUT_TRANS"] || 0) + Math.abs(cantidad);
     }
@@ -3934,7 +4077,6 @@ function applyConsolidadosSalidaDepco(){
     (resumenState.months[mes] || []).forEach(r => {
       const block = resumenBlockOf(r);
       
-      // 1. Lógica existente para Consolidados (Salida OTN -> OUT_DEPCO)
       if(block === "INGRESOS EMBARQUE"){
         const shInfo = findShipmentInfo(r.embarque);
         const isConsol = (shInfo && shInfo.tipo === "CONSOLIDADO_OTN") || normTxt(r.embarque).includes("CONSOLIDADO");
@@ -3947,7 +4089,6 @@ function applyConsolidadosSalidaDepco(){
         }
       }
       
-      // 2. Nueva lógica: Mover salidas negativas de bodegas en INTERCOMPANIES a SALIDA BODEGAS (en positivo)
       if(block === "INTERCOMPANIES" && r.channels){
         ["TRANS", "DEPSI", "DEPCO"].forEach(bod => {
           const val = Number(r.channels[bod]) || 0;
@@ -3963,7 +4104,6 @@ function applyConsolidadosSalidaDepco(){
   });
   if(huboCambios) saveLocalBackup();
 }
-
 function renderResumen(){
   applyConsolidadosSalidaDepco();
   const rawList = getResumenRowsForMonth(resumenState.mes);
@@ -4484,8 +4624,10 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
 /* =========================================================
    INICIALIZACIÓN
 ========================================================= */
-initFirebase();
-setInterval(checkAllAlerts, 60000);
+if (applyAreaAccessControl()) {
+  initFirebase();
+  setInterval(checkAllAlerts, 60000);
+}
 })();
 </script>
 </body>
