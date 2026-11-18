@@ -2090,11 +2090,11 @@ function checkAllAlerts(){
   const shipments = getShipmentsArray();
   let allAlerts = [];
   shipments.forEach(sh=>{
-    const shAlerts = getAlertsForShipment(sh).filter(alt => !brandContext || alt.marca === brandContext);
+    const shAlerts = getAlertsForShipment(sh);
     allAlerts = allAlerts.concat(shAlerts);
   });
   renderAlertsUI(allAlerts);
-  if (allAlerts.length > 0) {
+  if (allAlerts.length > 0 && (!cloudMode || (shipmentsLoaded && microLoaded))) {
     enviarAlertaPorPowerAutomate(allAlerts);
   }
   return allAlerts;
@@ -3460,7 +3460,7 @@ const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS
 const GRUPOS = ["Calzado","Ropa","Accesorios"];
 function normTxt(s){
   if(s === null || s === undefined) return "";
-  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toUpperCase();
 }
 const CHANNEL_ALIAS_MAP = (function(){
   const raw = {
@@ -3718,8 +3718,15 @@ function cellNum(row, idx){
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
   return isNaN(n) ? 0 : n;
 }
+function extractEmbarqueFromFileName(fileName){
+  if(!fileName) return "";
+  let base = String(fileName).replace(/\.(xlsx|xls|csv)$/i, "");
+  base = base.replace(/^LPN[\s_\-]+/i, "");
+  base = base.replace(/[\s_\-]+(ADIDAS|REEBOK|ADI|RBK)$/i, "");
+  return base.trim();
+}
 function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
-  const header = findHeaderRow(aoa, [["LPN PROVEEDOR"], ["EMBARQUE"], ["CANAL", "DESTINO"], ["CANT. EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]]);
+  const header = findHeaderRow(aoa, [["LPN PROVEEDOR"], ["CANAL", "DESTINO"], ["CANT. EMPACADA", "CANT EMPACADA", "CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
   const { rowIndex, colMap } = header;
   const lpnCol = getColIdx(colMap, ["LPN PROVEEDOR"]);
@@ -3730,38 +3737,42 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
   const grpCol = getColIdx(colMap, ["GRUPO"]);
   const fileContext = normTxt((fileName || "") + " " + (sheetName || ""));
   const fallbackMarca = fileContext.includes("REEBOK") ? "REEBOK" : "ADIDAS";
+  const fallbackEmbarque = extractEmbarqueFromFileName(fileName) || sheetName || "EMBARQUE LPN";
   const groupAcc = {};
   const globalUniqueLpns = new Set();
   let count = 0;
   let sinGrupo = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
-    const embarque = cellStr(row, embCol);
-    if(!embarque) continue;
+    const rawCanal = cellStr(row, cnlCol);
+    const rawLpn = cellStr(row, lpnCol);
+    const rawGrp = grpCol !== undefined ? cellStr(row, grpCol) : "";
+    const cantidad = cellNum(row, qtyCol);
+    if(!rawCanal && !rawLpn && !rawGrp && cantidad === 0) continue;
+    const embFromCol = embCol !== undefined ? cellStr(row, embCol) : "";
+    const embarque = embFromCol || fallbackEmbarque;
     const rawMarca = mrcCol !== undefined ? cellStr(row, mrcCol) : "";
     const marca = rawMarca ? resolveMarca(rawMarca) : fallbackMarca;
-    const rawGrupo = grpCol !== undefined ? cellStr(row, grpCol) : "";
-    const grupo = resolveGrupo(rawGrupo);
-    const canal = resolveChannel(cellStr(row, cnlCol), null);
-    const cantidad = cellNum(row, qtyCol);
-    const lpn = cellStr(row, lpnCol);
+    const grupo = resolveGrupo(rawGrp);
+    const canal = resolveChannel(rawCanal, null);
     if(!grupo){
-      if(cantidad > 0 || lpn) sinGrupo++;
+      if(cantidad > 0 || rawLpn) sinGrupo++;
       continue;
     }
     const key = normTxt(embarque) + "||" + marca + "||" + grupo;
     if(!groupAcc[key]){
       groupAcc[key] = { embarque, marca, grupo, lpns: new Set(), channels: {} };
     }
-    if(lpn){
-      groupAcc[key].lpns.add(lpn);
-      globalUniqueLpns.add(lpn);
+    if(rawLpn){
+      groupAcc[key].lpns.add(rawLpn);
+      globalUniqueLpns.add(rawLpn);
     }
     if(canal && cantidad !== 0){
       groupAcc[key].channels[canal] = (groupAcc[key].channels[canal] || 0) + cantidad;
     }
     count++;
   }
+  if(count === 0) return false;
   Object.values(groupAcc).forEach(acc => {
     ensureTriadRows(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", acc.embarque, acc.marca, acc.grupo, {});
@@ -3773,7 +3784,7 @@ function tryParseLpnProveedor(aoa, mes, fileName, sheetName, log){
     targetRow.lpnList = Array.from(prevLpns);
     targetRow.cartonesCount = targetRow.lpnList.length;
   });
-  let msg = `Packing List LPN: ${count} filas procesadas · ${globalUniqueLpns.size.toLocaleString()} cartones únicos (LPN Proveedor sin duplicados).`;
+  let msg = `Packing List LPN (${fallbackEmbarque}): ${count} filas procesadas · ${globalUniqueLpns.size.toLocaleString()} cartones únicos (LPN Proveedor sin duplicados).`;
   if(sinGrupo > 0) msg += ` (${sinGrupo} filas omitidas por no tener GRUPO válido).`;
   log.push({ type: count > 0 ? "ok" : "err", msg });
   return true;
@@ -4764,6 +4775,7 @@ document.getElementById("btnExportArribosCD").addEventListener("click", ()=>{
 ========================================================= */
 if (applyAreaAccessControl()) {
   initFirebase();
+  setTimeout(checkAllAlerts, 3000);
   setInterval(checkAllAlerts, 60000);
 }
 })();
