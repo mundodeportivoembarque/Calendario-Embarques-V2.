@@ -511,6 +511,45 @@ body.hide-global-tools #btnImport {
   text-align: center;
   box-shadow: var(--shadow);
 }
+
+  /* ---------- CRONOGRAMA VISUAL DE CONTENEDORES PARA CD ---------- */
+  .cnt-badge{
+    display:inline-flex;align-items:center;justify-content:center;gap:4px;
+    padding:3px 8px;border-radius:12px;font-size:11px;font-weight:800;white-space:nowrap;
+  }
+  .cnt-badge.lvl-0{background:#eef1f6;color:#68708a;border:1px solid #d0d7de;}
+  .cnt-badge.lvl-low{background:#d4edda;color:#155724;border:1px solid #c3e6cb;}
+  .cnt-badge.lvl-med{background:#fff3cd;color:#856404;border:1px solid #ffeeba;}
+  .cnt-badge.lvl-high{background:#fde3e3;color:#a81c1c;border:1px solid #f5c6cb;}
+  .cnt-cell-wrap{display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+  .cd-cnt-legend{
+    display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 14px;
+    background:#f6f8fc;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;font-size:12px;
+  }
+  .cd-cnt-legend-item{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ink);}
+  .cd-cnt-swatch{width:15px;height:15px;border-radius:4px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);}
+  .cd-gantt-bar{
+    height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px rgba(0,0,0,.12);
+    cursor:pointer;z-index:2;transition:transform .1s, box-shadow .15s;
+  }
+  .cd-gantt-bar:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.24);z-index:10;}
+  .cd-gantt-bar.lvl-0{background:#8c96ab;color:#fff;}
+  .cd-gantt-bar.lvl-low{background:#2e7d32;color:#fff;}
+  .cd-gantt-bar.lvl-med{background:#ef6c00;color:#fff;}
+  .cd-gantt-bar.lvl-high{background:#c62828;color:#fff;}
+  .cd-gantt-bar.brand-adidas{background:#C00000;color:#fff;}
+  .cd-gantt-bar.brand-reebok{background:#0d4a8c;color:#fff;}
+  .cd-gantt-bar.brand-adirbk{background:linear-gradient(90deg,#C00000 50%,#0d4a8c 50%);color:#fff;}
+  .cd-gantt-bar.st-arribo{background:#2e7d32;color:#fff;}
+  .cd-gantt-bar.st-transito{background:#d97706;color:#fff;}
+  .cd-ramp-cell{
+    display:flex;align-items:center;justify-content:center;height:26px;font-size:11px;font-weight:800;
+    border-left:1px solid #dce2ec;border-top:2px solid var(--navy);background:#f0f4fa;color:var(--navy);
+  }
+  .cd-ramp-cell.peak{background:#fde3e3;color:#a81c1c;}
+  .cd-ramp-cell.active{background:#e2efda;color:#1e4620;}
 </style>
 </head>
 <body>
@@ -937,6 +976,30 @@ body.hide-global-tools #btnImport {
       </table>
     </div>
     <div class="empty" id="emptyArribosCD" style="display:none;margin-top:12px;">No hay embarques registrados con fecha aproximada de arribo al CD para el año/mes seleccionado.</div>
+  </div>
+
+  <!-- CRONOGRAMA VISUAL DE CONTENEDORES PARA CD -->
+  <div class="card" id="cdContainersGanttCard">
+    <div class="card-head">
+      <div>
+        <h2>📅 Cronograma Visual de Recepción de Contenedores en CD</h2>
+        <span class="muted" style="font-size:12px;">Visualización por colores de las ventanas de descarga en el Centro de Distribución (3 días hábiles desde el arribo al CD) y carga diaria en andenes.</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="field" style="min-width:190px;">
+          <label>Colorear barras por</label>
+          <select id="cdGanttColorMode">
+            <option value="cantidad">📦 Cantidad de Contenedores</option>
+            <option value="estado">🚚 Estado de Arribo (Tránsito / Arribó)</option>
+            <option value="marca">🏷️ Marca (Adidas / Reebok)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="resumen-kpis" id="cdContainersKpis"></div>
+    <div id="cdContainersLegend" class="cd-cnt-legend"></div>
+    <div id="cdContainersGanttGrid" class="gantt-scroll"></div>
+    <div class="empty" id="emptyCdContainersGantt" style="display:none;">No hay embarques con fecha de arribo al CD para graficar en el periodo seleccionado.</div>
   </div>
 </div>
 <!-- ============ VIEW: ALERTAS Y CORREOS ============ -->
@@ -4108,16 +4171,12 @@ function renderResumenKPIs(rawList){
       canalTotals[c] += Number(r.channels && r.channels[c]) || 0;
     });
   });
-  let topCanal = "—", topCanalVal = 0;
-  Object.keys(canalTotals).forEach(c => {
-    if(canalTotals[c] > topCanalVal){
-      topCanalVal = canalTotals[c];
-      topCanal = c;
-    }
-  });
+  const netTrans = (canalTotals["TRANS"] || 0) - (canalTotals["OUT_TRANS"] || 0);
+  const netDepsi = (canalTotals["DEPSI"] || 0) - (canalTotals["OUT_DEPSI"] || 0);
+  const netDepco = (canalTotals["DEPCO"] || 0) - (canalTotals["OUT_DEPCO"] || 0);
+  const totBodegas = netTrans + netDepsi + netDepco;
   const pctAdi = totAll ? ((totAdidas / totAll) * 100).toFixed(1) + "%" : "0%";
   const pctRbk = totAll ? ((totReebok / totAll) * 100).toFixed(1) + "%" : "0%";
-  const pctTop = totAll ? ((topCanalVal / totAll) * 100).toFixed(1) + "%" : "0%";
   el.innerHTML = `
     <div class="kpi-card total">
       <span class="kpi-lbl">Total Unidades (Arribo CD · ${escapeHtml(getResumenPeriodLabel())})</span>
@@ -4135,9 +4194,9 @@ function renderResumenKPIs(rawList){
       <span class="kpi-sub">${pctRbk} del total mensual</span>
     </div>
     <div class="kpi-card top">
-      <span class="kpi-lbl">🏆 Canal Principal</span>
-      <span class="kpi-val">${escapeHtml(topCanal)}</span>
-      <span class="kpi-sub">${topCanalVal.toLocaleString()} uds (${pctTop})</span>
+      <span class="kpi-lbl">🏭 Total Bodegas (Neto)</span>
+      <span class="kpi-val">${totBodegas.toLocaleString()}</span>
+      <span class="kpi-sub">TRANS: <b>${netTrans.toLocaleString()}</b> · DEPSI: <b>${netDepsi.toLocaleString()}</b> · DEPCO: <b>${netDepco.toLocaleString()}</b></span>
     </div>
   `;
 }
@@ -4630,6 +4689,187 @@ function getFilteredArribosCD(){
     return true;
   }).sort((a,b) => a.cdTime - b.cdTime);
 }
+function parseContainerCount(rawStr){
+  if(!rawStr) return 0;
+  const s = String(rawStr).trim();
+  if(!s) return 0;
+  // Soporta formatos como "4 x 40 HC", "2x20", "3 CONT", o simplemente "4"
+  const multMatch = s.match(/^(\d+)\s*[xX×*]/);
+  if(multMatch) return parseInt(multMatch[1], 10) || 0;
+  const leadMatch = s.match(/^(\d+)/);
+  if(leadMatch) return parseInt(leadMatch[1], 10) || 0;
+  return 0;
+}
+function getContainerLevelClass(cnt){
+  if(!cnt || cnt <= 0) return "lvl-0";
+  if(cnt <= 2) return "lvl-low";
+  if(cnt === 3) return "lvl-med";
+  return "lvl-high";
+}
+function renderCdContainersGantt(enriched){
+  const kpisEl = document.getElementById("cdContainersKpis");
+  const legendEl = document.getElementById("cdContainersLegend");
+  const gridEl = document.getElementById("cdContainersGanttGrid");
+  const emptyEl = document.getElementById("emptyCdContainersGantt");
+  const modeSel = document.getElementById("cdGanttColorMode");
+  if(!gridEl || !kpisEl || !legendEl) return;
+
+  const validItems = (enriched || []).filter(it => it.cdDate && !isNaN(it.cdDate.getTime()));
+  if(validItems.length === 0){
+    kpisEl.innerHTML = "";
+    legendEl.innerHTML = "";
+    gridEl.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+
+  const colorMode = modeSel ? modeSel.value : "cantidad";
+  let totalCnt = 0, arribadosCnt = 0, transitoCnt = 0;
+
+  const entries = validItems.map(({ sh, cdDate }) => {
+    const manual = arribosManualState[sh.id] || {};
+    const contRaw = (manual.contenedores !== undefined && manual.contenedores !== null) ? String(manual.contenedores).trim() : "";
+    const cnt = parseContainerCount(contRaw);
+    const status = getShipmentArrivalStatus(sh);
+    const acts = computeActivities(sh);
+    const cdAct = acts.find(a => a.key === "ingreso_cd");
+    const start = cdAct ? cdAct.start : cdDate;
+    const end = cdAct ? cdAct.end : addBusinessDays(cdDate, 2);
+
+    totalCnt += cnt;
+    if(status === "YA ARRIBÓ") arribadosCnt += cnt;
+    else transitoCnt += cnt;
+
+    return { sh, start, end, cnt, contRaw, status };
+  });
+
+  // Calcular rango de fechas del calendario Gantt
+  let minDate = entries[0].start;
+  let maxDate = entries[0].end;
+  entries.forEach(e => {
+    if(e.start < minDate) minDate = e.start;
+    if(e.end > maxDate) maxDate = e.end;
+  });
+  const days = dateRange(minDate, maxDate);
+  const colCount = days.length;
+
+  // Calcular carga diaria en rampa (contenedores activos por día hábil de descarga)
+  let peakDayDate = null, peakDayCnt = 0;
+  const dailyLoad = days.map(d => {
+    if(isNonWorking(d)) return 0;
+    let sumDay = 0;
+    entries.forEach(e => {
+      if(d >= e.start && d <= e.end){
+        sumDay += e.cnt;
+      }
+    });
+    if(sumDay > peakDayCnt){
+      peakDayCnt = sumDay;
+      peakDayDate = d;
+    }
+    return sumDay;
+  });
+
+  // Renderizar KPIs de contenedores
+  kpisEl.innerHTML = `
+    <div class="kpi-card total">
+      <span class="kpi-lbl">📦 Total Contenedores (Periodo)</span>
+      <span class="kpi-val">${totalCnt}</span>
+      <span class="kpi-sub">En ${entries.length} embarque(s) programado(s)</span>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid #2e7d32;">
+      <span class="kpi-lbl">✅ Ya Arribados al CD</span>
+      <span class="kpi-val" style="color:#2e7d32;">${arribadosCnt}</span>
+      <span class="kpi-sub">${totalCnt ? ((arribadosCnt / totalCnt) * 100).toFixed(0) : 0}% recibido</span>
+    </div>
+    <div class="kpi-card top">
+      <span class="kpi-lbl">🚚 En Tránsito (Por Recibir)</span>
+      <span class="kpi-val" style="color:#C55A11;">${transitoCnt}</span>
+      <span class="kpi-sub">${totalCnt ? ((transitoCnt / totalCnt) * 100).toFixed(0) : 0}% pendiente de ingreso</span>
+    </div>
+    <div class="kpi-card adidas">
+      <span class="kpi-lbl">🔥 Día Pico en Andenes CD</span>
+      <span class="kpi-val">${peakDayCnt} cnt.</span>
+      <span class="kpi-sub">${peakDayDate ? fmtDMY(peakDayDate) : "Sin carga"}</span>
+    </div>
+  `;
+
+  // Renderizar Leyenda según modo de color
+  if(colorMode === "estado"){
+    legendEl.innerHTML = `
+      <span class="muted" style="font-weight:700;text-transform:uppercase;font-size:11px;">Código de Color (Estado):</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#2e7d32;"></span>✅ YA ARRIBÓ AL CD</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#d97706;"></span>🚚 EN TRÁNSITO</span>
+    `;
+  } else if(colorMode === "marca"){
+    legendEl.innerHTML = `
+      <span class="muted" style="font-weight:700;text-transform:uppercase;font-size:11px;">Código de Color (Marca):</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#C00000;"></span>ADIDAS</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#0d4a8c;"></span>REEBOK</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:linear-gradient(90deg,#C00000 50%,#0d4a8c 50%);"></span>ADIDAS-RBK</span>
+    `;
+  } else {
+    legendEl.innerHTML = `
+      <span class="muted" style="font-weight:700;text-transform:uppercase;font-size:11px;">Carga por Embarque:</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#2e7d32;"></span>1 a 2 Contenedores (Carga Ligera)</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#ef6c00;"></span>3 Contenedores (Carga Media)</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#c62828;"></span>4 o más Contenedores (Carga Alta)</span>
+      <span class="cd-cnt-legend-item"><span class="cd-cnt-swatch" style="background:#8c96ab;"></span>Sin contenedores asignados</span>
+    `;
+  }
+
+  const templateCols = `repeat(${colCount}, minmax(34px, 1fr))`;
+  let headerCells = `<div class="row-label-col">Embarque / Contenedores</div>`;
+  days.forEach(d => {
+    const cls = ["day-head"];
+    if(isWeekend(d)) cls.push("weekend");
+    if(isHoliday(d)) cls.push("holiday");
+    headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}/${d.getMonth()+1}</span></div>`;
+  });
+
+  let html = `<div class="gantt-grid" style="grid-template-columns:240px ${templateCols};">${headerCells}</div>`;
+
+  entries.forEach(e => {
+    const startIdx = Math.round((e.start - minDate) / 86400000) + 2;
+    const endIdx = Math.round((e.end - minDate) / 86400000) + 3;
+    const lvlCls = getContainerLevelClass(e.cnt);
+    let barColorCls = lvlCls;
+    if(colorMode === "estado"){
+      barColorCls = e.status === "YA ARRIBÓ" ? "st-arribo" : "st-transito";
+    } else if(colorMode === "marca"){
+      barColorCls = e.sh.marca === "REEBOK" ? "brand-reebok" : (e.sh.marca === "ADI_RBK" ? "brand-adirbk" : "brand-adidas");
+    }
+
+    const cntBadgeTxt = e.contRaw || (e.cnt ? `${e.cnt} CNT` : "0 CNT");
+    const statusIcon = e.status === "YA ARRIBÓ" ? "✅" : "🚚";
+    let rowCells = `<div class="row-label-col" style="justify-content:space-between;gap:6px;">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(e.sh.nombre)}">${statusIcon} ${escapeHtml(e.sh.nombre)}</span>
+      <span class="cnt-badge ${lvlCls}">${escapeHtml(cntBadgeTxt)}</span>
+    </div>`;
+
+    for(let i = 0; i < colCount; i++){
+      const d = days[i];
+      rowCells += `<div class="row-track ${isWeekend(d) ? 'weekend-col' : ''}" style="grid-column:${i+2}/${i+3};"></div>`;
+    }
+
+    const tipText = `${e.sh.nombre} (${marcaArriboLabel(e.sh.marca)}) · Contenedores: ${cntBadgeTxt} · Ventana CD: ${fmtDMY(e.start)} al ${fmtDMY(e.end)} · Estado: ${e.status}`;
+    rowCells += `<div class="cd-gantt-bar ${barColorCls}" style="grid-column:${startIdx}/${endIdx}; grid-row:1; align-self:center;" title="${escapeHtml(tipText)}">${escapeHtml(cntBadgeTxt)}</div>`;
+
+    html += `<div class="gantt-grid" style="grid-template-columns:240px ${templateCols}; grid-template-rows:30px; margin-bottom:3px;">${rowCells}</div>`;
+  });
+
+  // Fila resumen inferior: Carga diaria de contenedores en andenes del CD
+  let rampCells = `<div class="row-label-col" style="background:#f0f4fa;border-top:2px solid var(--navy);font-size:11px;">📊 Carga Diaria CD (Cnt.)</div>`;
+  dailyLoad.forEach((load, idx) => {
+    const isPeak = load > 0 && load === peakDayCnt && load >= 4;
+    const cellCls = isPeak ? "peak" : (load > 0 ? "active" : "");
+    rampCells += `<div class="cd-ramp-cell ${cellCls}" title="${fmtDMY(days[idx])}: ${load} contenedor(es) en ventana de descarga">${load > 0 ? load : "·"}</div>`;
+  });
+  html += `<div class="gantt-grid" style="grid-template-columns:240px ${templateCols}; margin-top:4px;">${rampCells}</div>`;
+
+  gridEl.innerHTML = html;
+}
 function renderArribosCD(){
   populateArribosFilters();
   const tbody = document.getElementById("arribosCdTbody");
@@ -4641,11 +4881,12 @@ function renderArribosCD(){
     tbody.innerHTML = "";
     tfoot.innerHTML = "";
     if(emptyEl) emptyEl.style.display = "block";
+    renderCdContainersGantt([]);
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
   let sumZapU = 0, sumZapC = 0, sumRopU = 0, sumRopC = 0, sumAccU = 0, sumAccC = 0;
-  let sumTotU = 0, sumTotC = 0, sumKg = 0, sumCbm = 0;
+  let sumTotU = 0, sumTotC = 0, sumKg = 0, sumCbm = 0, sumCnt = 0;
   tbody.innerHTML = enriched.map(({ sh, cdDate }) => {
     const stats = getResumenStatsForShipment(sh.nombre);
     const totU = stats.zapU + stats.ropU + stats.accU;
@@ -4654,6 +4895,8 @@ function renderArribosCD(){
     const kgVal = manual.kgBruto !== undefined && manual.kgBruto !== null ? manual.kgBruto : "";
     const cbmVal = manual.cubicaje !== undefined && manual.cubicaje !== null ? manual.cubicaje : "";
     const contVal = manual.contenedores !== undefined && manual.contenedores !== null ? manual.contenedores : "";
+    const cntNum = parseContainerCount(contVal);
+    const cntLvlCls = getContainerLevelClass(cntNum);
     const empresaTxt = getShipmentEmpresa(sh);
     sumZapU += stats.zapU; sumZapC += stats.zapC;
     sumRopU += stats.ropU; sumRopC += stats.ropC;
@@ -4661,6 +4904,7 @@ function renderArribosCD(){
     sumTotU += totU; sumTotC += totC;
     sumKg += parseFloat(kgVal) || 0;
     sumCbm += parseFloat(cbmVal) || 0;
+    sumCnt += cntNum;
     return `
       <tr>
         <td class="fecha-cd-cell">${cdDate ? fmtDMY(cdDate) : "—"}</td>
@@ -4679,7 +4923,12 @@ function renderArribosCD(){
         <td><input type="number" step="0.01" class="arribos-input" data-shid="${sh.id}" data-field="kgBruto" placeholder="0.00" value="${escapeHtml(String(kgVal))}"></td>
         <td><input type="number" step="0.01" class="arribos-input" data-shid="${sh.id}" data-field="cubicaje" placeholder="0.00" value="${escapeHtml(String(cbmVal))}"></td>
         <td>${arrivalSelectHtml(sh.id, getShipmentArrivalStatus(sh))}</td>
-        <td><input type="text" class="arribos-input wide" data-shid="${sh.id}" data-field="contenedores" placeholder="Ej. 3 x 40 HC" value="${escapeHtml(String(contVal))}"></td>
+        <td>
+          <div class="cnt-cell-wrap">
+            <span class="cnt-badge ${cntLvlCls}" title="Cantidad detectada: ${cntNum} contenedor(es)">${cntNum} CNT</span>
+            <input type="text" class="arribos-input wide" data-shid="${sh.id}" data-field="contenedores" placeholder="Ej. 3 x 40 HC" value="${escapeHtml(String(contVal))}">
+          </div>
+        </td>
       </tr>
     `;
   }).join("");
@@ -4696,14 +4945,18 @@ function renderArribosCD(){
       <td>${sumTotC.toLocaleString()}</td>
       <td>${sumKg.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:2})}</td>
       <td>${sumCbm.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-      <td colspan="2"></td>
+      <td></td>
+      <td>${sumCnt} CONTENEDORES</td>
     </tr>
   `;
+  renderCdContainersGantt(enriched);
 }
 document.getElementById("arribosYearSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosMonthSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosEmpresaSelect").addEventListener("change", renderArribosCD);
 document.getElementById("arribosMarcaSelect").addEventListener("change", renderArribosCD);
+const cdGanttModeEl = document.getElementById("cdGanttColorMode");
+if(cdGanttModeEl) cdGanttModeEl.addEventListener("change", renderArribosCD);
 document.getElementById("arribosCdTbody").addEventListener("change", (e)=>{
   const inp = e.target.closest("input.arribos-input");
   if(!inp) return;
